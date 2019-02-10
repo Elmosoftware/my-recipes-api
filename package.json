@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "mocha",
-    "start": "heroku local --port=3000 --procfile=Procfile.dev"
+    "start": "heroku local --port=3000 --procfile=Procfile.dev",
+    "startProd": "heroku local --port=3000 --procfile=Procfile.prod --env=.prod.env"
   },
   "author": "JC",
   "license": "ISC",

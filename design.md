@@ -269,4 +269,10 @@ Para depurar:
     Poner los puntos de interrupción y lanzar la tarea "Attach"
 
 
-    
+Orden tareas Feb 10th 2019:
+-----------------------
+ - Deployar a Heroku la API
+ - Investigar deploy de Angular Apps a Heroku
+ - Deployar la app a heroku
+ - Probar ambiente PROD
+ - continuar con desarrollo de Historia de Imagenes en Mis Recetas.
