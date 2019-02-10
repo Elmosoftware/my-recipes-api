@@ -264,14 +264,16 @@ Cambios a la API:
 -----------------
 Ahora para lanzar la app:
     npm start
-
+Para lanzarla con la  config de prod:
+    npm run startProd
 Para depurar:
     Poner los puntos de interrupción y lanzar la tarea "Attach"
 
-
 Orden tareas Feb 10th 2019:
 -----------------------
+v- Update Node and NPM versions.
  - Deployar a Heroku la API
+ - Probar la app en local
  - Investigar deploy de Angular Apps a Heroku
  - Deployar la app a heroku
  - Probar ambiente PROD
