@@ -21,6 +21,7 @@ class RequestContext {
     constructor(req, res, options) {
         this._method = "";
         this._entity = null;
+        this._endpoint = null;
         this._params = new Array();
         this._query = { top: "", skip: "", sort: "", pop: "", filter: "", count: "", fields: "", pub: "", owner:"" };
         this._hasQueryParameters = false;
@@ -82,6 +83,13 @@ class RequestContext {
      */
     get entity() {
         return this._entity;
+    }
+
+    /**
+     * Returns the endpoint the client is hitting.
+     */
+    get endpoint() {
+        return this._endpoint;
     }
 
     /**
@@ -294,7 +302,7 @@ class RequestContext {
             }
         }
         else if (this._options.validEndpoints && this._options.validEndpoints.length > 0 && 
-            !this._options.validEndpoints.includes(this.url.replace(/\//g, ""))) {
+            !this._options.validEndpoints.includes(this.endpoint.replace(/\//g, ""))) {
             errors.push(`-The requested URI is invalid: "${encodeURI(this.url)}", no endpoint defined with that name.`)
         }
 
@@ -325,6 +333,7 @@ class RequestContext {
             if (entities.exists(parsedURL.entity)) {
                 this._entity = entities.getEntity(parsedURL.entity);
             }
+            this._endpoint = parsedURL.entity;
         }
 
         this._params = parsedURL.params;
