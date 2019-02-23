@@ -1,14 +1,15 @@
 var fs = require("fs");
+var exec = require('child_process').exec;
 var gulp = require("gulp");
 var del = require("del");
 var babel = require("gulp-babel");
 var uglify = require("gulp-uglify");
-var nodemon = require("gulp-nodemon");
+// var nodemon = require("gulp-nodemon");
 var rename = require("gulp-rename")
 
 var path = {
     // src: `*.js`,
-    srcAppFiles: [`*.js`, `!gulpfile.js`],
+    srcAppFiles: [`*.js`, `!gulpfile.js`, `*.stage`],
     srcAdditionalFiles: [`*.html`],
     stage: `tmp`,
     prod: `dist`,
@@ -47,18 +48,18 @@ gulp.task("copyConfigToTemp", function () {
 gulp.task("copyToTemp", gulp.series(
     "cleanTemp",
     "copyRootFilesToTemp",
-    "copyAdditionalFilesToTemp", 
+    "copyAdditionalFilesToTemp",
     "copyConfigToTemp"
 ));
 
 gulp.task("runAPIfromTemp", function (done) {
-    nodemon({
-        script: `${path.stage}/index.js`,
-        env: { 
-            "NODE_ENV": "development" 
-        },
-        done: done
-    })
+    
+    console.log(`\nMy Recipes API is now running in stage, (Path: ${path.stage}).\nPress CTRL-C to finish the process.`)
+    exec("heroku local --port=3000 --procfile=Procfile.stage", function (err, stdout, stderr) {
+        console.log(stdout);
+        console.log(stderr);
+        done();
+    });
 })
 //#endregion
 
@@ -99,7 +100,7 @@ gulp.task("copyDeployConfigToDist", function () {
 gulp.task("copyToDist", gulp.series(
     "cleanDist",
     "copyRootFilesToDist",
-    "copyAdditionalFilesToDist", 
+    "copyAdditionalFilesToDist",
     "copyConfigToDist",
     "copyDeployConfigToDist"
 ));
@@ -113,9 +114,9 @@ gulp.task("runAPIfromDist", function (done) {
 
     nodemon({
         script: `${path.prod}/index.js`,
-        env: { 
+        env: {
             "NODE_ENV": "production",
-            "PORT" : 3000
+            "PORT": 3000
         },
         done: done
     })

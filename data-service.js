@@ -169,7 +169,9 @@ class Service {
                     document.lastUpdateBy = user.id;
                     document.deletedOn = null;
 
-                    model.update(this._parseConditions(Security.ACCESS_TYPE.WRITE, id, user), document, (err, data) => {
+                    // (node:44156) DeprecationWarning: collection.update is deprecated. Use updateOne, updateMany, or bulkWrite instead.
+                    // model.update(this._parseConditions(Security.ACCESS_TYPE.WRITE, id, user), document, (err, data) => {
+                    model.updateOne(this._parseConditions(Security.ACCESS_TYPE.WRITE, id, user), document, (err, data) => {
                         //The attempt to update a non existent document by Id is not reported as error by Mongoose:
                         if (!err && data.n == 0) {
                             err = new Error(`The last UPDATE operation affects no documents. This can be caused by the following issues: \n

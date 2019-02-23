@@ -1,1 +1,1 @@
-web: node --nolazy --inspect index.js
+web: node index.js

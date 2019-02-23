@@ -32,7 +32,11 @@ let schema = new mongoose.Schema(helper.addCommonEntityAttributes({
     /**
      * The complete set of directions required to prepare the recipe.
      */
-    directions: [{ type: String, required: true }]
+    directions: [{ type: String, required: true }],
+    /**
+     * List of recipe pictures.
+     */
+    pictures: [{ type: mongoose.Schema.Types.ObjectId, ref: "RecipePicture", required: true }]
 }));
 
 schema.methods.toJSON = function () {

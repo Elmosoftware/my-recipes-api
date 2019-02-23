@@ -12,6 +12,7 @@ var manage = new ManagementClient({
   });
 
 var Context = require("./request-context");
+var ConfigValidator = require("./config-validator");
 
 //Middleware function specific to this route:
 routerManagement.use(function (req, res, next) {
@@ -22,7 +23,7 @@ routerManagement.use(function (req, res, next) {
 
     options.disableEntityCheck = true; //Management API doesn't use entities.
     options.doNotApplyConfiguredDelay = true; //Configured delay doesn't apply to this API.
-    options.validEndpoints = [ "user" ];
+    options.validEndpoints = [ "user", "config-status" ];
 
     req["context"] = new Context.RequestContext(req, res, options);
 
@@ -32,6 +33,23 @@ routerManagement.use(function (req, res, next) {
         next();
     }
 });
+
+routerManagement.get("/config-status", (req, res) => {
+
+    let cfgVal = new ConfigValidator();
+    let err = null;
+
+    cfgVal.validateConfig();
+
+    if (!cfgVal.isValid) {
+        err = `The following configuration errors has been found:
+            ${cfgVal.getErrors().message}`
+    }
+    
+    req["context"].sendResponse(err, {
+        ok: cfgVal.isValid
+    }, HttpStatus.OK);    
+})
 
 routerManagement.get("/user/*", (req, res) => {
 

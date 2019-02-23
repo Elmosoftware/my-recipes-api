@@ -9,18 +9,9 @@
 .env
 .env.*
 
-#Solution documents
-doc/**
-
-#Mongo DB data folder
-data/**
-data.bak/**
-
 # compiled output
-api-svc/dist/**
-api-svc/tmp/**
-web/dist/**
-web/tmp/**
+dist/**
+tmp/**
 /out-tsc
 
 # IDE - VSCode

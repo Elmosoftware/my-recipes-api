@@ -35,13 +35,75 @@ class MediaService {
 
             if (!err && data && data.resources) {
                 data.resources.forEach(resource => {
-                    let obj = new Carousel(this._applyImageTransformations(resource.secure_url),
-                        (resource.context && resource.context.custom) ? resource.context.custom : null);
+                    let obj = new Media(this._applyImageTransformations(resource.secure_url),
+                        (resource.context && resource.context.custom) ? resource.context.custom : null,
+                        resource.public_id);
                     resources.push(obj);
                 });
             }
 
             callback(err, resources)
+        });
+    }
+
+    getUploadSettings(callback) {
+
+        var val = new ServiceValidator();
+        var data = null;
+
+        if (!val.validateCallback(callback)
+            .isValid) {
+            return (callback(val.getErrors(), {}));
+        }
+
+        data = {
+            cloudName: process.env.CDN_CLOUD_NAME || "",
+            filesPrefix: process.env.CDN_USERS_PREFIX || "",
+            maxFilesSize: process.env.CDN_MAX_UPLOAD_SIZE || "",
+            maxUploadsPerCall: process.env.CDN_MAX_UPLOADS_PER_CALL || "",
+            supportedFileFormats: []
+        }
+
+        if (process.env.CDN_SUPPORTED_FILE_FORMATS) {
+            data.supportedFileFormats = process.env.CDN_SUPPORTED_FILE_FORMATS.toLowerCase().split(",");
+        }
+
+        callback(null, data)
+    }
+
+    uploadFiles(files, callback) {
+
+        var val = new ServiceValidator();
+        let promises = []
+        let options = { folder: process.env.CDN_USERS_PREFIX }
+        
+        if (!val.validateCallback(callback)
+            .validateMediaUploadContent(files)
+            .isValid) {
+            return (callback(val.getErrors(), {}));
+        }
+
+        //Uploading the images to the CDN provider:
+        files.forEach((file) => {
+            promises.push(cloudinary.uploader.upload(file.path, options));
+        });
+
+        Promise.all(promises)
+        .then((results) => {
+            try {
+                let data = []
+
+                results.forEach((result) => {
+                    data.push(new Media(result.secure_url, null, result.public_id));
+                })
+
+                callback(null, data);
+            } catch (err) {
+                callback(err, {});
+            }
+        })
+        .catch((err) => {
+            callback(err, {});
         });
     }
 
@@ -84,10 +146,11 @@ class MediaService {
     }
 }
 
-class Carousel {
-    constructor(url, metadata) {
-        this.url = url
-        this.metadata = metadata
+class Media {
+    constructor(url, metadata, id) {
+        this.url = url;
+        this.metadata = metadata;
+        this.id = id;
     }
 }
 

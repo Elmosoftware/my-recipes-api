@@ -62,6 +62,16 @@ const entities = {
         deletePrivileges: Security.ACCESS_PRIVILEGES.OWNER,
         hiddenFields: [],
         notQueryableFields: []
+    },
+    recipepictures: { 
+        name: "recipepicture", 
+        model: require("./model-recipe-picture"), 
+        references: [],
+        readNotPublishedPrivilege: Security.ACCESS_PRIVILEGES.OWNER,
+        writePrivileges: Security.ACCESS_PRIVILEGES.OWNER,
+        deletePrivileges: Security.ACCESS_PRIVILEGES.OWNER,
+        hiddenFields: [],
+        notQueryableFields: []
     }
 };
 

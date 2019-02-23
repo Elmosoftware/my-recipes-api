@@ -3,7 +3,7 @@
 var assert = require("assert");
 var sinon = require('sinon');
 var entities = require("../entities");
-var Service = require("../service");
+var Service = require("../data-service");
 
 function setQuery(top, skip, sort, pop, count, filter, fields, pub, owner) {
   const ret = {

@@ -1,5 +1,5 @@
 //@ts-check
-
+var path = require('path')
 const ValidatorBase = require("./validator-base");
 const Security = require("./security-service");
 
@@ -150,7 +150,7 @@ class ServiceValidator extends ValidatorBase {
         if (!query) {
             ret = `The parameter "query" can't be null or empty. Parameter value: '${query}'.`;
         }
-        if (!(query === Object(query))) {
+        else if (!(query === Object(query))) {
             ret = `We expected an Object for parameter "query" and we get a type of '${typeof query}'.`;
         }
         else {
@@ -171,6 +171,49 @@ class ServiceValidator extends ValidatorBase {
             }
             if (query.owner) {
                 this._validateOwner(query.owner, user)
+            }
+        }
+
+        if (ret) {
+            super._addError(ret);
+        }
+
+        return this;
+    }
+
+    validateMediaUploadContent(files){
+        let ret = "";
+        let fileFormats = process.env.CDN_SUPPORTED_FILE_FORMATS.toLowerCase().split(",");
+
+        if (!files || !Array.isArray(files)) {
+            ret = `We expect an array for Parameter "files" but is a null reference or not an array.`;
+        }
+        else if (files.length == 0) {
+            ret = `No files provided to upload. Parameter "files" is an array with no elements.`;
+        }
+        else if (files.length > Number(process.env.CDN_MAX_UPLOADS_PER_CALL)) {
+            ret = `The upload request contains more files than allowed. Total files submitted: ${files.length}, total files allowed ${process.env.CDN_MAX_UPLOADS_PER_CALL}.`;
+        }
+        else {
+            //Still need to check for max file size per each one:
+            for (let i = 0; i < files.length; i++) {
+
+                let file = files[i];
+                let fileExt = path.extname(file.originalname);
+        
+                if (file.size > Number(process.env.CDN_MAX_UPLOAD_SIZE)) {
+                    ret = `The size of file number ${i+1}, original name: "${file.originalname}" is greater than allowed. File size: ${file.size} bytes. Maximum upload size: ${process.env.CDN_MAX_UPLOAD_SIZE} bytes.`
+                }
+                else if (!fileExt) {
+                    ret = `Submitted file has no extension so we cannot process it. File number ${i+1}, original name: "${file.originalname}".`   
+                }
+                else if(!fileFormats.includes(fileExt)) {
+                    ret = `File type is not supported.File number ${i+1}, original name: "${file.originalname}", Supported file types:"${process.env.CDN_SUPPORTED_FILE_FORMATS}".`
+                }
+                
+                if (ret) {
+                    break;
+                }                
             }
         }
 

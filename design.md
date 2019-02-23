@@ -278,3 +278,17 @@ v- Update Node and NPM versions.
  - Deployar la app a heroku
  - Probar ambiente PROD
  - continuar con desarrollo de Historia de Imagenes en Mis Recetas.
+
+ =================================================================================
+
+ RECIPE PICTURES:
+ __________________
+
+ Model:
+ ______
+
+ RecipePicture
+    recipe: ObjectId => Reference to the Recipe
+    pictureId: string => Public id of the picture as stated by the CDN provider.
+        NOTE: With this id, plus the cloud name we can get the picture URL from the CDN provider with any required transformations.
+    isCover: boolean => Indicates if this picture was selected by the user as the cover picture. 

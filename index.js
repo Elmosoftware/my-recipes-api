@@ -1,7 +1,6 @@
 // @ts-check
 
 //App configuration:
-//const result = require('dotenv').config({ path: __dirname + '/.env' })
 const ConfigValidator = require("./config-validator");
 const cfgVal = new ConfigValidator();
 
@@ -20,18 +19,6 @@ const mongooseOptions = {
 //Auth settings:
 const jwt = require('express-jwt');
 const jwks = require('jwks-rsa');
-const jwksOptions = {
-    cache: true,
-    rateLimit: true,
-    jwksRequestsPerMinute: 5,
-    jwksUri: `https://${process.env.AUTHMANAGEMENT_DOMAIN}/.well-known/jwks.json`
-}
-const authCheckMiddleware = jwt({
-    secret: jwks.expressJwtSecret(jwksOptions),
-    audience: `https://${process.env.AUTHMANAGEMENT_DOMAIN}/api/v2/`,
-    issuer: `https://${process.env.AUTHMANAGEMENT_DOMAIN}/`,
-    algorithms: ['RS256']
-}); //This is the middeware function that will check the token in the Authorization header
 
 //Main routes:
 const routerData = require("./router-data"); //API Data route.
@@ -40,18 +27,11 @@ const routerMedia = require("./router-media"); //API Management route.
 
 console.log("\n -----  MY RECIPES API  -----\n");
 
-// //Id dotenv was not able to parse the ".env" file:
-// if (result.error) {
-//     throw result.error;
-// }
-
 //We validate the configuration is there and has valid settings:
 if (!cfgVal.validateConfig().isValid) {
-    throw new Error(`The following configuration errors prevent the application to start:\n${cfgVal.getErrors().message}
-    Please, review your ".env" file and adjust it accordingly.`);
+    console.error(`\n\nIMPORTANT: The following configuration errors could prevent the application to start:\n${cfgVal.getErrors().message}
+    Please, review your ".env" file and adjust it accordingly.\n\n`);
 }
-
-//console.log(JSON.stringify(result.parsed)
 
 if (process.env.NODE_ENV != "production") {
     console.log("\nAPP Configuration (non-production site):\n");
@@ -69,6 +49,20 @@ if (process.env.NODE_ENV == "production" && Number(process.env.REQUESTS_ADDED_DE
     console.error(`Environment is "prod', so REQUESTS_ADDED_DELAY was set to "0".`)
 }
 
+const jwksOptions = {
+    cache: true,
+    rateLimit: true,
+    jwksRequestsPerMinute: 5,
+    jwksUri: `https://${process.env.AUTHMANAGEMENT_DOMAIN}/.well-known/jwks.json`
+}
+
+const authCheckMiddleware = jwt({
+    secret: jwks.expressJwtSecret(jwksOptions),
+    audience: `https://${process.env.AUTHMANAGEMENT_DOMAIN}/api/v2/`,
+    issuer: `https://${process.env.AUTHMANAGEMENT_DOMAIN}/`,
+    algorithms: ['RS256']
+}); //This is the middeware function that will check the token in the Authorization header 
+
 mongoose.Promise = global.Promise; // Using native promises.
 
 app.use(bodyParser.json()); // to support JSON-encoded bodies.
@@ -79,11 +73,11 @@ app.get('/', function(req, res){
     res.sendFile(__dirname + "/index.html");
 });
 
-//Routing of Management API:
+//Routing of Management API
 app.use("/api/management", authCheckMiddleware, routerManagement);
 
 //Routing of Media API:
-app.use("/api/media", routerMedia);
+app.use("/api/media", authCheckMiddleware.unless({ method: 'GET' }), routerMedia);
 
 //Routing of Data API:
 // @ts-ignore
