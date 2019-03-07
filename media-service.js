@@ -37,7 +37,7 @@ class MediaService {
                 data.resources.forEach(resource => {
                     let obj = new Media(this._applyImageTransformations(resource.secure_url),
                         (resource.context && resource.context.custom) ? resource.context.custom : null,
-                        resource.public_id);
+                        resource.public_id, process.env.CDN_CLOUD_NAME, resource.width, resource.height);
                     resources.push(obj);
                 });
             }
@@ -94,7 +94,8 @@ class MediaService {
                 let data = []
 
                 results.forEach((result) => {
-                    data.push(new Media(result.secure_url, null, result.public_id));
+                    data.push(new Media(result.secure_url, null, result.public_id, 
+                        process.env.CDN_CLOUD_NAME, result.width, result.height));
                 })
 
                 callback(null, data);
@@ -147,10 +148,13 @@ class MediaService {
 }
 
 class Media {
-    constructor(url, metadata, id) {
+    constructor(url, metadata, publicId, cloudName, width, height) {
         this.url = url;
         this.metadata = metadata;
-        this.id = id;
+        this.publicId = publicId;
+        this.cloudName = cloudName;
+        this.width = width;
+        this.height = height;
     }
 }
 
