@@ -292,3 +292,19 @@ v- Update Node and NPM versions.
     pictureId: string => Public id of the picture as stated by the CDN provider.
         NOTE: With this id, plus the cloud name we can get the picture URL from the CDN provider with any required transformations.
     isCover: boolean => Indicates if this picture was selected by the user as the cover picture. 
+
+
+=====================================================================================
+
+Issue con save en subdocs
+----------------------------
+
+PENDIENTE: 
+- Tirar atras cambios para hacer update de subdocumentos.
+- Probar tirar atrás model.updateOne por model update como antes.
+    https://mongoosejs.com/docs/api.html#model_Model.updateOne
+    Ver que updateOne no soporta overwrite.
+
+    Alternatozas si no funciona:
+    - 
+    - Agregar options: { overwrite: true }
