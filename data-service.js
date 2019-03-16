@@ -188,10 +188,10 @@ class Service {
 
                     console.log(`SUBDOCS promises results:`);
                     console.log(`${JSON.stringify(results)
-                            .replace(/{/g, "")
-                            .replace(/}/g, "\n")}`)
-                    
-                    this.setAuditData(false, document, user);                   
+                        .replace(/{/g, "")
+                        .replace(/}/g, "\n")}`)
+
+                    this.setAuditData(false, document, user);
 
                     // (node:44156) DeprecationWarning: collection.update is deprecated. Use updateOne, updateMany, or bulkWrite instead.
                     model.update(this._parseConditions(Security.ACCESS_TYPE.WRITE, id, user), document, (err, data) => {
@@ -496,11 +496,11 @@ class Service {
                 this.setAuditData(saveAsNew, obj, user);
                 promises.push(obj.save());
             }
-            else{
+            else {
                 this.setAuditData(saveAsNew, doc, user);
                 console.log(`Updating -> ${this._entity.model.modelName}#${doc._id}`)
                 promises.push(this._entity.model
-                    .update({_id: doc._id}, doc)
+                    .update({ _id: doc._id }, doc)
                     .exec());
             }
         }
@@ -535,8 +535,8 @@ class Service {
             //to wait to the async callback:
             val._id = this.getNewobjectId();
             isNew = true;
-        }        
-        
+        }
+
         //If the subdocument holds a reference to the parent document, we fill it with the parent Object id:
         if (refEntity.model.schema.obj.hasOwnProperty(this._entity.name)) {
             val[this._entity.name] = parentDocument._id;
@@ -570,6 +570,51 @@ class Service {
         }
 
         switch (accessType) {
+            // case Security.ACCESS_TYPE.READ:
+
+            //     if (val.isValidObjectId(conditions)) {
+            //         ret._id = conditions;
+            //     }
+            //     else {
+            //         ret = JSON.parse(decodeURIComponent(conditions));
+
+            //         //Adding conditions for "pub" query value:
+            //         //----------------------------------------
+            //         //Default behaviour is to include only published entities:
+            //         if (query.pub == "" || query.pub.toLowerCase() == "default") {
+            //             ret.publishedOn = { $ne: null };
+            //         }
+            //         //If was requested to include not published entities only:
+            //         else if (query.pub == "notpub") {
+            //             ret.publishedOn = { $eq: null };
+            //         }
+
+            //         //Adding conditions for "owner" query value:
+            //         //----------------------------------------
+            //         if (user && user.id) {
+
+            //             let conditions = new Array();
+
+            //             if (query.owner.toLowerCase() == "me") {
+            //                 conditions.push(secSvc.getOnlyOwnerAccessCondition(user));
+            //             }
+            //             else if (query.owner.toLowerCase() == "others") {
+            //                 conditions.push({ createdBy: { $ne: user.id } });
+            //                 conditions.push({ lastUpdateBy: { $ne: user.id } });
+            //             }
+
+            //             if (conditions.length > 0) {
+            //                 if (!ret.$and) {
+            //                     ret.$and = new Array();
+            //                 }
+
+            //                 conditions.forEach((cond) => {
+            //                     ret.$and.push(cond);
+            //                 });
+            //             }
+            //         }
+            //     }
+            //     break;
             case Security.ACCESS_TYPE.READ:
 
                 if (val.isValidObjectId(conditions)) {
@@ -577,43 +622,43 @@ class Service {
                 }
                 else {
                     ret = JSON.parse(decodeURIComponent(conditions));
+                }
 
-                    //Adding conditions for "pub" query value:
-                    //----------------------------------------
-                    //Default behaviour is to include only published entities:
-                    if (query.pub == "" || query.pub.toLowerCase() == "default") {
-                        ret.publishedOn = { $ne: null };
+                //Adding conditions for "pub" query value:
+                //----------------------------------------
+                //Default behaviour is to include only published entities:
+                if (query.pub == "" || query.pub.toLowerCase() == "default") {
+                    ret.publishedOn = { $ne: null };
+                }
+                //If was requested to include not published entities only:
+                else if (query.pub == "notpub") {
+                    ret.publishedOn = { $eq: null };
+                }
+
+                //Adding conditions for "owner" query value:
+                //----------------------------------------
+                if (user && user.id) {
+                    let conditions = new Array();
+
+                    if (query.owner.toLowerCase() == "me") {
+                        conditions.push(secSvc.getOnlyOwnerAccessCondition(user));
                     }
-                    //If was requested to include not published entities only:
-                    else if (query.pub == "notpub") {
-                        ret.publishedOn = { $eq: null };
+                    else if (query.owner.toLowerCase() == "others") {
+                        conditions.push({ createdBy: { $ne: user.id } });
+                        conditions.push({ lastUpdateBy: { $ne: user.id } });
                     }
 
-                    //Adding conditions for "owner" query value:
-                    //----------------------------------------
-                    if (user && user.id) {
-
-                        let conditions = new Array();
-
-                        if (query.owner.toLowerCase() == "me") {
-                            conditions.push(secSvc.getOnlyOwnerAccessCondition(user));
-                        }
-                        else if (query.owner.toLowerCase() == "others") {
-                            conditions.push({ createdBy: { $ne: user.id } });
-                            conditions.push({ lastUpdateBy: { $ne: user.id } });
+                    if (conditions.length > 0) {
+                        if (!ret.$and) {
+                            ret.$and = new Array();
                         }
 
-                        if (conditions.length > 0) {
-                            if (!ret.$and) {
-                                ret.$and = new Array();
-                            }
-
-                            conditions.forEach((cond) => {
-                                ret.$and.push(cond);
-                            });
-                        }
+                        conditions.forEach((cond) => {
+                            ret.$and.push(cond);
+                        });
                     }
                 }
+
                 break;
 
             case Security.ACCESS_TYPE.WRITE:
