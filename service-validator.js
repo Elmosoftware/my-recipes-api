@@ -2,6 +2,7 @@
 var path = require('path')
 const ValidatorBase = require("./validator-base");
 const Security = require("./security-service");
+var Codes = require("./codes");
 
 /**
  * Data API Service validator.
@@ -183,16 +184,20 @@ class ServiceValidator extends ValidatorBase {
 
     validateMediaUploadContent(files){
         let ret = "";
+        let userCode = "";
         let fileFormats = process.env.CDN_SUPPORTED_FILE_FORMATS.toLowerCase().split(",");
 
         if (!files || !Array.isArray(files)) {
             ret = `We expect an array for Parameter "files" but is a null reference or not an array.`;
+            userCode = Codes.UploadNoFiles.key;
         }
         else if (files.length == 0) {
             ret = `No files provided to upload. Parameter "files" is an array with no elements.`;
+            userCode = Codes.UploadNoFiles.key;
         }
         else if (files.length > Number(process.env.CDN_MAX_UPLOADS_PER_CALL)) {
             ret = `The upload request contains more files than allowed. Total files submitted: ${files.length}, total files allowed ${process.env.CDN_MAX_UPLOADS_PER_CALL}.`;
+            userCode = Codes.UploadTooManyFiles.key
         }
         else {
             //Still need to check for max file size per each one:
@@ -202,13 +207,16 @@ class ServiceValidator extends ValidatorBase {
                 let fileExt = path.extname(file.originalname);
         
                 if (file.size > Number(process.env.CDN_MAX_UPLOAD_SIZE)) {
-                    ret = `The size of file number ${i+1}, original name: "${file.originalname}" is greater than allowed. File size: ${file.size} bytes. Maximum upload size: ${process.env.CDN_MAX_UPLOAD_SIZE} bytes.`
+                    ret = `The size of file number ${i+1}, original name: "${file.originalname}" is bigger than allowed. File size: ${file.size} bytes. Maximum upload size: ${process.env.CDN_MAX_UPLOAD_SIZE} bytes.`;
+                    userCode = Codes.UploadTooBigFile.key
                 }
                 else if (!fileExt) {
-                    ret = `Submitted file has no extension so we cannot process it. File number ${i+1}, original name: "${file.originalname}".`   
+                    ret = `Submitted file has no extension so we cannot process it. File number ${i+1}, original name: "${file.originalname}".`;
+                    userCode = Codes.UploadFileWithoutExtension.key;
                 }
                 else if(!fileFormats.includes(fileExt)) {
-                    ret = `File type is not supported.File number ${i+1}, original name: "${file.originalname}", Supported file types:"${process.env.CDN_SUPPORTED_FILE_FORMATS}".`
+                    ret = `File type is not supported.File number ${i+1}, original name: "${file.originalname}", Supported file types:"${process.env.CDN_SUPPORTED_FILE_FORMATS}".`;
+                    userCode = Codes.UploadNotSupportedFile.key;
                 }
                 
                 if (ret) {
@@ -219,6 +227,10 @@ class ServiceValidator extends ValidatorBase {
 
         if (ret) {
             super._addError(ret);
+        }
+
+        if (userCode) {
+            super._setUserErrorCode(userCode);
         }
 
         return this;

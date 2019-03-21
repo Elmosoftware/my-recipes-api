@@ -15,18 +15,24 @@ class ResponseBody{
 
     _stringifyError(err){
 
-        let ret = { message: "", stack: ""};
+        let ret = { message: "", stack: "", userErrorCode: ""};
 
         if (!err) {
             ret = null;
         }
         else if (typeof err == "object") {
+            
             if (err.message) {
                 ret.message = err.message;
             }
+            
             if (err.stack) {
                 ret.stack = err.stack;
-            }            
+            }
+
+            if (err.userErrorCode) {
+                ret.userErrorCode = err.userErrorCode;
+            } 
         }
         else {
             ret.message = err.toString();

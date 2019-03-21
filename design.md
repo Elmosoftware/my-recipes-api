@@ -308,3 +308,18 @@ PENDIENTE:
     Alternatozas si no funciona:
     - 
     - Agregar options: { overwrite: true }
+
+
+=====================================================================================
+
+Implement *User error* messages.
+--------------------------------
+
+Candidates:
+
+DONE        router-data lines 84, 94: mongo DB Error E11000 indicates dup key.
+DONE        data-service line 200: Update affects no documents.
+DONE        data-service line 407: Delete affects no documents.
+DONE        service-validator line 184: All the errors in "validateMediaUploadContent()" need to be treated as separate User errors.
+
+

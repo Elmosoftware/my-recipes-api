@@ -4,8 +4,8 @@ var entities = require("./entities");
 const ResponseBody = require("./response-body");
 
 const allowedHTTPMethods = {
-    GET: { errorCode: HttpStatus.INTERNAL_SERVER_ERROR, successCode: HttpStatus.OK },
-    POST: { errorCode: HttpStatus.INTERNAL_SERVER_ERROR, successCode: HttpStatus.CREATED },
+    GET: { errorCode: HttpStatus.BAD_REQUEST, successCode: HttpStatus.OK },
+    POST: { errorCode: HttpStatus.BAD_REQUEST, successCode: HttpStatus.CREATED },
     PUT: { errorCode: HttpStatus.UNPROCESSABLE_ENTITY, successCode: HttpStatus.OK },
     DELETE: { errorCode: HttpStatus.UNPROCESSABLE_ENTITY, successCode: HttpStatus.OK },
 }

@@ -3,6 +3,7 @@ var mongoose = require("mongoose");
 const ServiceValidator = require("./service-validator");
 const Security = require("./security-service");
 const Entities = require("./entities");
+const Codes = require("./codes")
 
 /**
  * Data API Service
@@ -144,7 +145,16 @@ class Service {
 
                     obj.isNew = true;
                     this.setAuditData(true, obj, user);
-                    obj.save(callback);
+                    
+                    obj.save((err, data) => {
+
+                        //We check if the error is related to a duplicate key, (wrong data set by the user):
+                        if (this.errorIsDupKey(err)) {
+                            Codes.addUserErrorCode(err, Codes.DuplicatedItem.key)
+                        }
+
+                        callback(err, data);
+                    });
                 } catch (err) {
                     callback(err, {});
                 }
@@ -195,11 +205,17 @@ class Service {
 
                     // (node:44156) DeprecationWarning: collection.update is deprecated. Use updateOne, updateMany, or bulkWrite instead.
                     model.update(this._parseConditions(Security.ACCESS_TYPE.WRITE, id, user), document, (err, data) => {
+                        
+                        if (this.errorIsDupKey(err)) {
+                            Codes.addUserErrorCode(err, Codes.DuplicatedItem.key)
+                        }
+                        
                         //The attempt to update a non existent document by Id is not reported as error by Mongoose:
                         if (!err && data.n == 0) {
                             err = new Error(`The last UPDATE operation affects no documents. This can be caused by the following issues: \n
                                 - The document you try to update no longer exists.
                                 - The document is owned by another user and therefore you are not able to change it in any way.`);
+                            Codes.addUserErrorCode(err, Codes.VoidUpdate.key)
                         }
 
                         return (callback(err, {}));
@@ -402,11 +418,17 @@ class Service {
 
         this._entity.model.update(this._parseConditions(Security.ACCESS_TYPE.DELETE, id, user),
             { $set: { deletedOn: new Date() } }, (err, data) => {
+
+                if (this.errorIsDupKey(err)) {
+                    Codes.addUserErrorCode(err, Codes.DuplicatedItem.key)
+                }
+
                 //The attempt to soft delete a non existent document by Id is not reported as error by Mongoose:
                 if (!err && data.n == 0) {
                     err = new Error(`The last DELETE operation affects no documents. This can be caused by the following issues: \n
                                 - The document you try to delete no longer exists.
                                 - The document is owned by another user and therefore you are not able to change it in any way.`);
+                    Codes.addUserErrorCode(err, Codes.VoidDelete.key)
                 }
 
                 return (callback(err, {}));
@@ -570,51 +592,6 @@ class Service {
         }
 
         switch (accessType) {
-            // case Security.ACCESS_TYPE.READ:
-
-            //     if (val.isValidObjectId(conditions)) {
-            //         ret._id = conditions;
-            //     }
-            //     else {
-            //         ret = JSON.parse(decodeURIComponent(conditions));
-
-            //         //Adding conditions for "pub" query value:
-            //         //----------------------------------------
-            //         //Default behaviour is to include only published entities:
-            //         if (query.pub == "" || query.pub.toLowerCase() == "default") {
-            //             ret.publishedOn = { $ne: null };
-            //         }
-            //         //If was requested to include not published entities only:
-            //         else if (query.pub == "notpub") {
-            //             ret.publishedOn = { $eq: null };
-            //         }
-
-            //         //Adding conditions for "owner" query value:
-            //         //----------------------------------------
-            //         if (user && user.id) {
-
-            //             let conditions = new Array();
-
-            //             if (query.owner.toLowerCase() == "me") {
-            //                 conditions.push(secSvc.getOnlyOwnerAccessCondition(user));
-            //             }
-            //             else if (query.owner.toLowerCase() == "others") {
-            //                 conditions.push({ createdBy: { $ne: user.id } });
-            //                 conditions.push({ lastUpdateBy: { $ne: user.id } });
-            //             }
-
-            //             if (conditions.length > 0) {
-            //                 if (!ret.$and) {
-            //                     ret.$and = new Array();
-            //                 }
-
-            //                 conditions.forEach((cond) => {
-            //                     ret.$and.push(cond);
-            //                 });
-            //             }
-            //         }
-            //     }
-            //     break;
             case Security.ACCESS_TYPE.READ:
 
                 if (val.isValidObjectId(conditions)) {
@@ -694,6 +671,15 @@ class Service {
 
         return ret;
     }
+
+    /**
+     * Returns a boolean value indicating if the provided error is a duplicate key error on a Database operation.
+     * @param {any} err Error to evaluate
+     */
+    errorIsDupKey(err){
+        return (err && err.code && Number(err.code) == 11000) //11000 is the error code provided by Mongo related to duplicate key infractions.
+    }
+
     //#endregion
 }
 
