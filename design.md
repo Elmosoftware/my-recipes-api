@@ -323,3 +323,89 @@ DONE        data-service line 407: Delete affects no documents.
 DONE        service-validator line 184: All the errors in "validateMediaUploadContent()" need to be treated as separate User errors.
 
 
+==========================================================================
+
+U S E R  E N T I T Y
+---------------------
+
+User {
+    _id: ObjectId,
+    providerId: string,
+    name: string,
+    email: string,
+    details: ObjectId
+}
+
+Add index by "ProviderId"
+
+UserDetails{
+    _id: ObjectId,
+    user: ObjectId,
+    providerName: string;
+    lastLogin: Date;
+    isSocial: boolean;
+    picture: string;
+    emailVerified: boolean;
+    isAdmin: boolean;
+}
+
+Steps for the auth process:
+
+- After the user authenticates or signup in the provide page, a call to "/auth-callback" take place and the token is 
+retrieved by the App.
+- The app calls "api/management/user/{Provider user id in the token}" to get user details.
+- In that endpoint we need to follow this logic:
+    IF user exists with providerId == token.userId THEN
+        We update the entity "User" and "UserDetails" with the data provided by the Auth provider endpoint.
+    ELSE
+        We create the User and UserDetails
+    ENDIF
+
+    We return the User and UserDetails.
+    
+
+CACHE
+======================
+
+v- Convertir Request contest en Middleware
+ - Crear cache global.
+ - Cachear en /login.
+ - En el metodo _setContext(req) setear en req["context"].user el _id trayendolo de cache, si no está en cache buscarlo y después llamar a next().
+
+
+----------------------
+
+Session
+    UserId
+    ProviderId
+    IsAdmin
+    expireOn
+
+v Cache
+    Users --> Internamente crea un node-cache con un cierto TTL, o TTL = 0, (a definir)
+        getByProviderId(providerId:string): User
+        set(Session)
+
+v EN Request Context:
+    SI El user no está en cache:
+        SI Lo busca y no lo encuentra
+            Hay que asumir que es el login tras el sign up de un nuevo user, (el cache se actualizará 
+                entonces en el endpoint login), entonces no crea entrada en cache.
+        SINO
+            Lo agrega a cache
+        FINSI
+    FIN SI
+
+v En Router Management\login:
+    Actualiza el user en cache tras el create or update.
+
+v En Router POST Management\user:
+    Actualiza el user en cache tras el update de preferences.
+    
+TODO:
+
+v - Agregar el ttl al cache de sessionData, (tiene que removerlo de cache cuando la sesión expira: sessionData.isExpired())
+v - Modificar la clase Entity tanto en APÏ como en Frontend para que CreatedBy sea una reference a User.
+v - Modificar el metodo "setauditData" del data service para que guarde en createdBy and LastUpdatedBy el userId en lugar del ProviderId
+v - Actualizar test classes!!!!
+  - Cambiar el nombre de "user" en request context por "activeSession".

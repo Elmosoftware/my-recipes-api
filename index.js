@@ -3,6 +3,7 @@
 //App configuration:
 const ConfigValidator = require("./config-validator");
 const cfgVal = new ConfigValidator();
+const entities = require("./entities");
 
 //Express setup:
 const express = require("express");
@@ -19,6 +20,9 @@ const mongooseOptions = {
 //Auth settings:
 const jwt = require('express-jwt');
 const jwks = require('jwks-rsa');
+
+//Context:
+const Context = require("./request-context")
 
 //Main routes:
 const routerData = require("./router-data"); //API Data route.
@@ -74,22 +78,30 @@ app.get('/', function(req, res){
 });
 
 //Routing of Management API
-app.use("/api/management", authCheckMiddleware, routerManagement);
+app.use("/api/management", 
+    authCheckMiddleware, 
+    Context.middleware(new Context.RequestContextOptions(["login", "user", "config-status"], true)),
+    routerManagement);
 
 //Routing of Media API:
-app.use("/api/media", authCheckMiddleware.unless({ method: 'GET' }), routerMedia);
+app.use("/api/media", 
+    authCheckMiddleware.unless({ method: 'GET' }), 
+    Context.middleware(new Context.RequestContextOptions([ "carousel", "upload" ], true)),
+    routerMedia);
 
 //Routing of Data API:
 // @ts-ignore
 app.use("/api", authCheckMiddleware.unless((req) => {
 
-    //OPTIONS Method is always excluded from authenticationcheck. 
-    //GET requests will be allowed always, but, if they carry the AUTHORIZATION header, we will run the middleware 
-    //to process the authentication data:
-    let ret = req.method.toLowerCase() == "options" || (req.method.toLowerCase() == "get" && !req.headers.authorization);
+        //OPTIONS Method is always excluded from authenticationcheck. 
+        //GET requests will be allowed always, but, if they carry the AUTHORIZATION header, we will run the middleware 
+        //to process the authentication data:
+        let ret = req.method.toLowerCase() == "options" || (req.method.toLowerCase() == "get" && !req.headers.authorization);
 
-    return ret;
-}), routerData);
+        return ret;
+    }),
+    Context.middleware(new Context.RequestContextOptions(entities.getMappedEndpointsList())),
+    routerData);
 
 //Adding specific Mongo DB connect options for Prod:
 if (process.env.NODE_ENV == "production") {

@@ -1,5 +1,7 @@
 // @ts-check
 
+var mongoose = require("mongoose");
+
 /**
  * Add to the supplied schema definition, all the attributes that are common to any entity.
  * This also support the following custom field attributes:
@@ -8,18 +10,24 @@
  *  - notQueryable {boolean}: Indicates if the field can be used or not on query filter conditions. if this 
  * attribute has the value "true", any attempt to include this in a query filter condition will cause an exception. 
  * @param {*} schemaDefinition Entity schema definition.
+ * @param {boolean} includeAuditFields Indicates if audit fields must be added to the schema. Default value is true.
  * @returns The supplied SchemaDefinition with the added common entity attributes.
  */
-function addCommonEntityAttributes(schemaDefinition) {
+function addCommonEntityAttributes(schemaDefinition, includeAuditFields = true) {
 
-   schemaDefinition.createdOn = { type: Date, required: true };
-   schemaDefinition.createdBy = { type: String, required: true, notQueryable: true };
-   schemaDefinition.lastUpdateOn = { type: Date, required: false };
-   schemaDefinition.lastUpdateBy = { type: String, required: false, notQueryable: true };
-   schemaDefinition.publishedOn = { type: Date, required: false, notQueryable: true };
-   schemaDefinition.deletedOn = { type: Date, required: false , hidden: true, notQueryable: true };
-   
-   return schemaDefinition;
+    if (includeAuditFields) {
+        schemaDefinition.createdOn = { type: Date, required: true }; 
+        //Following is "notQueryable" because any possible filter must be applied from the "owner" query parameter only:
+        schemaDefinition.createdBy = { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, notQueryable: true }; 
+        schemaDefinition.lastUpdateOn = { type: Date, required: false };
+        schemaDefinition.lastUpdateBy = { type: String, required: false, notQueryable: true };
+    }
+    
+    schemaDefinition.publishedOn = { type: Date, required: false, notQueryable: true };
+    schemaDefinition.deletedOn = { type: Date, required: false, hidden: true, notQueryable: true }; //"hidden" because must be  
+    //internal only as parte of the "soft deletion" feature.
+
+    return schemaDefinition;
 }
 
 /**

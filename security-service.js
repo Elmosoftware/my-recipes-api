@@ -31,10 +31,10 @@ class SecurityService {
      * Returns an empty string if the access is allowed. otherwise return the access violation details.
      * @param {ACCESS_TYPE} accessType Requested access type, (like read, update, etc.) 
      * @param {object} entity Entity object
-     * @param {object} user RequestContext.user object
+     * @param {object} session RequestContext.activeSession object
      * @param {object} query RequestContext.query object
      */
-    validateAccessRequest(accessType, entity, user = null, query = null) {
+    validateAccessRequest(accessType, entity, session = null, query = null) {
         let ret = "";
         let isNotPubAccess = Boolean(query && query.pub && ["all", "notpub"].includes(String(query.pub).toLowerCase()));
 
@@ -44,17 +44,17 @@ class SecurityService {
         switch (accessType) {
             case ACCESS_TYPE.READ:
                 //Only the read access to not published entities is restricted, so we will check only that condition:
-                if (isNotPubAccess && !this._validatePrivileges(entity.readNotPublishedPrivilege, user)) {
+                if (isNotPubAccess && !this._validatePrivileges(entity.readNotPublishedPrivilege, session)) {
                     ret = `Not published "${entity.name}" can be accessed ONLY by users granted as "${entity.readNotPublishedPrivilege}".`
                 }
                 break;
             case ACCESS_TYPE.WRITE:
-                if (!this._validatePrivileges(entity.writePrivileges, user)) {
+                if (!this._validatePrivileges(entity.writePrivileges, session)) {
                     ret = `Entities of type "${entity.name}" can be created or updated ONLY by authenticated users granted as "${entity.readNotPublishedPrivilege}".`
                 }
                 break;
             case ACCESS_TYPE.DELETE:
-                if (!this._validatePrivileges(entity.deletePrivileges, user)) {
+                if (!this._validatePrivileges(entity.deletePrivileges, session)) {
                     ret = `Entities of type "${entity.name}" can be deleted ONLY by authenticated users granted as "${entity.readNotPublishedPrivilege}".`
                 }
                 break;
@@ -74,10 +74,10 @@ class SecurityService {
      * @param {ACCESS_TYPE} accessType Requested Access Type.
      * @param {object} conditionsObject Filter conditions object.
      * @param {object} entity Entity object. 
-     * @param {object} user RequestContext.user object
+     * @param {object} session RequestContext.activeSession object
      * @param {object} query RequestContext.query object.  
      */
-    updateQueryFilterWithSecurityConstraints(accessType, conditionsObject, entity, user = null, query = null){
+    updateQueryFilterWithSecurityConstraints(accessType, conditionsObject, entity, session = null, query = null){
 
         let restrictOwnerOnly = false;
         let isNotPubAccess;
@@ -116,12 +116,11 @@ class SecurityService {
             //If the query conditions attempt to retrieve one single document by his id:
             if (isIdFilter) {
                 //If there is an authenticated user:
-                if (user && user.id) {
+                if (session && session.providerId) {
                     //We will grant access only to owners at least the document is already published:
                     conditionsObject.$or = [
                         { publishedOn: { $ne: null } },
-                        { lastUpdateBy: user.id },
-                        { createdBy: user.id }]
+                        { createdBy: session.userId }]
                 }
                 else {
                     //If there is no authenticated user: He can only be able to access Published documents :-(
@@ -133,23 +132,23 @@ class SecurityService {
                 if (!conditionsObject.$and) {
                     conditionsObject.$and = new Array();
                 }
-                conditionsObject.$and.push(this.getOnlyOwnerAccessCondition(user));
+                conditionsObject.$and.push(this.getOnlyOwnerAccessCondition(session));
             }
         }
     }
 
     /**
      * Return a filter condition required to return only documents owned by the provided user.
-     * @param {object} user RequestContext.user object
+     * @param {object} session RequestContext.activeSession object.
      */
-    getOnlyOwnerAccessCondition(user){
-        this._checkUserParam(user);
-        return { $or: [{ lastUpdateBy: user.id }, { createdBy: user.id }] };
+    getOnlyOwnerAccessCondition(session){
+        this._checkUserParam(session);
+        return { createdBy: session.userId };
     }
 
     //#region Private Members
 
-    _validatePrivileges(accessPrivileges, user){
+    _validatePrivileges(accessPrivileges, session){
         
         let ret = false;
 
@@ -160,16 +159,16 @@ class SecurityService {
                 ret = true;
                 break;
             case ACCESS_PRIVILEGES.AUTHENTICATED:
-                ret = Boolean(user);
+                ret = Boolean(session);
                 break;
             case ACCESS_PRIVILEGES.OWNER:
-                //We will return "true" here always there is a valid user, because we are not able to validate if the user is the 
-                //Owner without to access the Database.
-                //This will be handled later by adding a DB filter conditions to que query in order to enforce this rule.
-                ret = Boolean(user);
+                //We will return "true" here always there is an active session, because we are not able to validate if the 
+                //user is the Owner without to access the Database.
+                //This will be handled later by adding a DB filter conditions to the query in order to enforce this rule.
+                ret = Boolean(session);
                 break;
             case ACCESS_PRIVILEGES.ADMINISTRATORS:
-                ret = (user && user.isAdmin)
+                ret = (session && session.isAdmin)
                 break;
             default:
                 throw new Error(`There is no action defined for an ACCESS_PRIVILEGES with value "${accessPrivileges}".`)
@@ -251,8 +250,8 @@ class SecurityService {
         if (!(user === Object(user))) {
             ret = `We expected an Object for parameter "user" and we get a type of '${typeof user}'.`;
         }
-        else if (!(user.id && user.isAdmin === Boolean(user.isAdmin))) {
-            ret = `The attributes "id" and "isAdmin" of the "user" provided parameter seems to be missing.`;
+        else if (!user.providerId) {
+            ret = `The attribute "providerId" of the provided parameter "user" seems to be missing.`;
         }
         
         if (ret) {

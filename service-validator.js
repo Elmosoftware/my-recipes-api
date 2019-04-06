@@ -19,13 +19,13 @@ class ServiceValidator extends ValidatorBase {
      * Validates the requested access.
      * @param {object} accessType Requested Access Type.
      * @param {object} entity Entity object. 
-     * @param {object} user RequestContext.user object
+     * @param {object} session RequestContext.activeSession object
      * @param {object} query RequestContext.query object.  
      */
-    validateAccess(accessType, entity, user = null, query = null) {
+    validateAccess(accessType, entity, session = null, query = null) {
         let ret = ""
 
-        ret = this.svcSec.validateAccessRequest(accessType, entity, user, query);
+        ret = this.svcSec.validateAccessRequest(accessType, entity, session, query);
         
         if (ret) {
             super._addError(ret);
@@ -143,9 +143,9 @@ class ServiceValidator extends ValidatorBase {
     /**
      * Validate the supplied querystring parameters in the HTTP request.
      * @param {object} query RequestContext.query object.
-     * @param {object} user RequestContext.user object
+     * @param {object} session RequestContext.activeSession object
      */
-    validateQuery(query, user) {
+    validateQuery(query, session) {
         let ret = "";
 
         if (!query) {
@@ -168,10 +168,10 @@ class ServiceValidator extends ValidatorBase {
                 this._validateFields(query.fields);
             }
             if (query.pub) {
-                this._validatePub(query.pub, user);
+                this._validatePub(query.pub, session);
             }
             if (query.owner) {
-                this._validateOwner(query.owner, user)
+                this._validateOwner(query.owner, session)
             }
         }
 
@@ -354,7 +354,7 @@ class ServiceValidator extends ValidatorBase {
         return this;
     }
 
-    _validatePub(value, user) {
+    _validatePub(value, session) {
         let ret = "";
         /*
             "pub" query parameter valid values and meaning:
@@ -374,7 +374,7 @@ class ServiceValidator extends ValidatorBase {
             Current value is: "${value}".
             Possible values are: ${validValues.join(", ")}.`;
         }
-        else if (!user && (value.toLowerCase() == "all" || value.toLowerCase() == "notpub")) {
+        else if (!session && (value.toLowerCase() == "all" || value.toLowerCase() == "notpub")) {
             ret = `The query option "pub" was specified with value '${value}' but there is no authenticated user for this request`;
         }
 
@@ -385,7 +385,7 @@ class ServiceValidator extends ValidatorBase {
         return this;
     }
 
-    _validateOwner(value, user) {
+    _validateOwner(value, session) {
         let ret = "";
         /*
             "owner" query parameter valid values and meaning:
@@ -406,7 +406,7 @@ class ServiceValidator extends ValidatorBase {
             Current value is: "${value}".
             Possible values are: ${validValues.join(", ")}.`;
         }
-        else if (!user && (value.toLowerCase() == "me" || value.toLowerCase() == "others")) {
+        else if (!session && (value.toLowerCase() == "me" || value.toLowerCase() == "others")) {
             ret = `The query option "owner" was specified with value '${value}' but there is no authenticated user for this request`;
         }
 

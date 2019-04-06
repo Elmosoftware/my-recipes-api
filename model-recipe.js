@@ -43,7 +43,7 @@ schema.methods.toJSON = function () {
     return helper.preProcessJSON(this);
 }
 
-schema.index({ name: 1, deletedOn: 1 }, { unique: true, background: true, name: "EntityConstraint" })
+schema.index({ name: 1, deletedOn: 1 }, { unique: false, background: true, name: "EntityConstraint" })
 schema.index(
     {
         name: "text",

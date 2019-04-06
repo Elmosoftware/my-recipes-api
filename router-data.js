@@ -3,7 +3,6 @@
 var express = require("express");
 var routerData = express.Router();
 var HttpStatus = require("http-status-codes");
-var Context = require("./request-context");
 const Service = require("./data-service");
 
 //Middleware function specific to this route:
@@ -11,13 +10,7 @@ routerData.use(function (req, res, next) {
 
     //Do anything required here like logging, etc...
 
-    req["context"] = new Context.RequestContext(req, res);
-    
-    //If the request is not valid, the RequestContext class already sent the response with the error
-    //details, so no need to call next middleware:
-    if (req["context"].isValidRequest) {
-        next();
-    }
+    next();
 });
 
 routerData.get("/*", function (req, res) {
@@ -53,10 +46,10 @@ routerData.get("/*", function (req, res) {
 
     //If we are counting records:
     if (isCounting) {
-        promises.push(svc.count(condition, req["context"].user, req["context"].query));
+        promises.push(svc.count(condition, req["context"].activeSession, req["context"].query));
     }
 
-    promises.push(svc.find(condition, projection, req["context"].user, req["context"].query));
+    promises.push(svc.find(condition, projection, req["context"].activeSession, req["context"].query));
 
     Promise.all(promises)
         .then((results) => {
@@ -80,7 +73,7 @@ routerData.post("/*", function (req, res) {
 
     const svc = new Service(req["context"].entity);
 
-    svc.add(req.body, req["context"].user, (err, data) => {
+    svc.add(req.body, req["context"].activeSession, (err, data) => {
         req["context"].sendResponse(err, data);
     });
 });
@@ -90,7 +83,7 @@ routerData.put("/*", function (req, res) {
     const svc = new Service(req["context"].entity);
 
     if (req["context"].params.length > 0) {
-        svc.update(req["context"].params[0], req.body, req["context"].user, (err, data) => {
+        svc.update(req["context"].params[0], req.body, req["context"].activeSession, (err, data) => {
             req["context"].sendResponse(err, data);
         });
     }
@@ -106,7 +99,7 @@ routerData.delete("/*", function (req, res) {
     const svc = new Service(req["context"].entity);
 
     if (req["context"].params.length > 0) {
-        svc.delete(req["context"].params[0], req["context"].user, (err, data) => {
+        svc.delete(req["context"].params[0], req["context"].activeSession, (err, data) => {
             req["context"].sendResponse(err, data);
         });
     }

@@ -1,13 +1,30 @@
 // @ts-check
 var HttpStatus = require("http-status-codes");
+
 var entities = require("./entities");
 const ResponseBody = require("./response-body");
+const RequestValidator = require("./request-validator")
+const Cache = require("./session-cache")
+var Service = require("./data-service");
 
 const allowedHTTPMethods = {
     GET: { errorCode: HttpStatus.BAD_REQUEST, successCode: HttpStatus.OK },
     POST: { errorCode: HttpStatus.BAD_REQUEST, successCode: HttpStatus.CREATED },
     PUT: { errorCode: HttpStatus.UNPROCESSABLE_ENTITY, successCode: HttpStatus.OK },
     DELETE: { errorCode: HttpStatus.UNPROCESSABLE_ENTITY, successCode: HttpStatus.OK },
+}
+
+/**
+ * This is the middlewar function you must use to initialize the request Context.
+ * The context will be set as the attribute "context" of the request.
+ * @param {RequestContextOptions} options Options to be set for the request context.
+ */
+function middleware(options) {
+
+    return (req, res, next) => {
+        let context = new RequestContext(options);
+        context.setContext(req, res, next);
+    }
 }
 
 /**
@@ -18,29 +35,127 @@ const allowedHTTPMethods = {
  */
 class RequestContext {
    
-    constructor(req, res, options) {
+    /**
+     * Constructor
+     * @param {RequestContextOptions} options The request options.
+     */
+    constructor(options) {
         this._method = "";
         this._entity = null;
         this._endpoint = null;
         this._params = new Array();
-        this._query = { top: "", skip: "", sort: "", pop: "", filter: "", count: "", fields: "", pub: "", owner:"" };
+        this._query = new RequestQuery();
         this._hasQueryParameters = false;
         this._url = "";
-        this._user = { rawData: null, id: "", isAdmin: false };
+        this._activeSession = null;
         this._options = options;
-        this._res = res;
-        this._isValidRequest = true;
+        this._res = null;
         this._responseHeadersInPayload = null;
+    }
 
-        this._initialize(req);
+    setContext(req, res, next) {
+
+        let val = new RequestValidator();
+        const svc = new Service(entities.getEntityByName("user"));
+        let query = new RequestQuery();
+        let asyncInProgress = false;
+        let parsedURL = {};
+
+        //Setting this RequestContext instance as the "context" attribute of the request:
+        req.context = this;
+
+        this._res = res;
+        
+        //Setting CORS Headers:
+        this._res.setHeader("Access-Control-Allow-Origin", "*");
+        this._res.setHeader("Access-Control-Allow-Methods", this.getAllowedHTTPMethods().join(", "));
+        this._res.setHeader("Access-Control-Allow-Headers", "Origin, Content-Type, X-Auth-Token, Authorization");
+
+        this._url = decodeURI(req.url.toString());
+        this._method = req.method;
+
+        parsedURL = this._parseURL(this._url);
+
+        if (parsedURL.endpoint) {
+            this._endpoint = parsedURL.endpoint;
+            
+            if (entities.endpointHasMappedEntity(this._endpoint)) {
+                this._entity = entities.getEntityByEndpointName(this._endpoint);
+            }
+        }
+
+        this._params = parsedURL.params;
+
+        //Parsing querystring parameters:
+        Object.getOwnPropertyNames(this._query).forEach((element) => {
+            this._query[element] = (req.query[element]) ? req.query[element] : "";
+            this._hasQueryParameters = Boolean(this._hasQueryParameters || req.query[element]);
+        });
+
+        //At this point we can validate the request:
+        if (!val.validateRequestContext(this).isValid) {
+            this.sendResponse(val.getErrors(), {}, HttpStatus.BAD_REQUEST);
+            return;
+        }
+
+        //If there is an authenticated user, we parse the user data:
+        if (req.user) {
+            //We search for the user in the session cache:
+            this._activeSession = Cache.sessionCache.getByProviderId(req.user.sub);
+
+            if (this._activeSession) {
+                /**
+                 * Note: Even if the user exists, we need to update the expiration date because, at this moment, the user 
+                 * is not removed from cache when he log out from the frontend.
+                 * This is because the API is not called as part of the log out process.
+                 */
+                this._activeSession.expireOn = Number(new Date(req.user.exp * 1000)); //We just update the expiration:
+                Cache.sessionCache.set(this._activeSession);
+            }
+            else {
+                //we need to create the session data:
+                this._activeSession = new Cache.SessionData(req.user.sub, Number(new Date(req.user.exp * 1000)));
+
+                query.fields = "details.isAdmin"
+                asyncInProgress = true;
+                svc.find(JSON.stringify({ providerId: this._activeSession.providerId }), null, this._activeSession, query)
+                .then((users) => {
+
+                    /*
+                        NOTE:
+                            There is one particular use case were we can't find the user. And that is right after a new user sign up.
+                            If thats the case, the \login endpoint was not hit, so the user was not created yet.
+
+                            So... we do nothing. All the extra information in the user session will be fill in the login endpoint.
+                    */
+                    if (users.length > 0) {
+                        this._activeSession.userId = users[0]._id;
+                        this._activeSession.isAdmin = users[0].details.isAdmin;
+                        Cache.sessionCache.set(this._activeSession);
+                    }
+
+                    next();
+                })
+                .catch((err) => {
+                    this.sendResponse(new Error(`There was an error trying to fetch user information from the database.
+                    Error details:${(err.message) ? err.message : err}`), {});
+                });
+            }
+        }
+        else {
+            this._activeSession = null;
+        }
+
+        if (!asyncInProgress) {
+            next();
+        }
     }
 
     /**
-     * Indicates if the request is valid. If this attribute hold the value "false", means that the response was already sent
-     * with the error details and no need to proceed with "next()" middleware.
+     * Returns the context options.
      */
-    get isValidRequest() {
-        return this._isValidRequest;
+    get options() {
+        return this._options;
     }
 
     /**
@@ -48,21 +163,6 @@ class RequestContext {
      */
     get method() {
         return this._method;
-    }
-
-    /**
-     * Returns a boolean value indicating if the current HTTP method is allowed by the API.
-     */
-    get isMethodAllowed() {
-
-        var ret = false;
-        //Method OPTION is used by the Browser to get the initial site requirements in terms of security and others. 
-        //We don't use it directly in our API, but we need to support it.
-        if (this._method == "OPTIONS" || allowedHTTPMethods[this._method]) {
-            ret = true;
-        }
-
-        return ret;
     }
 
     /**
@@ -141,16 +241,17 @@ class RequestContext {
 
     /**
      * Returns the profile of the authenticated user. If there is no authenticated user, this attribute will be null.
+     * @returns SessionData
      */
-    get user() {
-        return this._user;
+    get activeSession() {
+        return this._activeSession;
     }
 
     /**
      * Returns a boolean value indicating if this request is made by an authenticated user.
      */
     get isAuthenticated() {
-        return !(this._user == null);
+        return !(this._activeSession == null);
     }
 
     /**
@@ -167,14 +268,7 @@ class RequestContext {
      * @param {any|Error} err Request processing error or null.
      */
     getStatusCode(err) {
-
-        var ret = HttpStatus.METHOD_NOT_ALLOWED;
-
-        if (this.isMethodAllowed) {
-            ret = (err) ? allowedHTTPMethods[this._method].errorCode : allowedHTTPMethods[this._method].successCode;
-        }
-
-        return ret;
+        return (err) ? allowedHTTPMethods[this._method].errorCode : allowedHTTPMethods[this._method].successCode;
     }
 
     /**
@@ -232,7 +326,7 @@ class RequestContext {
 
         let pos = 0;
         let ret = {
-            entity: "",
+            endpoint: "",
             params: []
         }
         /*
@@ -254,11 +348,11 @@ class RequestContext {
 
         //If there is no other separator all the URL is the entity, like in "/entity".
         if (pos == -1) {
-            ret.entity = url;
+            ret.endpoint = url;
             return ret;
         }
 
-        ret.entity = url.slice(0, pos);
+        ret.endpoint = url.slice(0, pos);
         url = url.slice(pos + 1); //Removing all until next caracter after the separator.
 
         //Parsing the Query:
@@ -281,82 +375,6 @@ class RequestContext {
 
         return ret;
     }
-
-    _initialize(req) {
-
-        let errors = new Array();
-
-        this._setContext(req);
-
-        if (!(this._options && this._options.disableCORSHeaders)) {
-            //Setting CORS Headers:
-            this._res.setHeader("Access-Control-Allow-Origin", "*");
-            this._res.setHeader("Access-Control-Allow-Methods", this.getAllowedHTTPMethods().join(", "));
-            this._res.setHeader("Access-Control-Allow-Headers", "Origin, Content-Type, X-Auth-Token, Authorization");
-        }
-
-        if (!(this._options && this._options.disableEntityCheck)) {
-            //Check if the request is for a valid entity:
-            if (!this.entity) {
-                errors.push(`-The requested URI is invalid: "${encodeURI(this.url)}", no entity defined with that name.`)
-            }
-        }
-        else if (this._options.validEndpoints && this._options.validEndpoints.length > 0 && 
-            !this._options.validEndpoints.includes(this.endpoint.replace(/\//g, ""))) {
-            errors.push(`-The requested URI is invalid: "${encodeURI(this.url)}", no endpoint defined with that name.`)
-        }
-
-        if (!(this._options && this._options.disableMethodCheck)) {
-            //Check if the method is supported:
-            if (!this.isMethodAllowed) {
-                errors.push(`-The requested method is not supported by this API. Method: "${encodeURI(this.method)}". Allowed HTTP methods are: "${this.getAllowedHTTPMethods().join(", ")}".`)
-            }
-        }
-
-        //If there was any error, we will response the error data:
-        if (errors.length > 0) {
-            let e = new Error(`Request was aborted. Please check error details below: \n"${errors.join("\n")}"`);
-            this._isValidRequest = false;
-            this.sendResponse(e, {}, HttpStatus.BAD_REQUEST);
-        }
-    }
-
-    _setContext(req) {
-
-        let parsedURL = {};
-
-        this._url = decodeURI(req.url.toString());
-        this._method = req.method;
-        parsedURL = this._parseURL(this._url);
-
-        if (parsedURL.entity) {
-            if (entities.exists(parsedURL.entity)) {
-                this._entity = entities.getEntity(parsedURL.entity);
-            }
-            this._endpoint = parsedURL.entity;
-        }
-
-        this._params = parsedURL.params;
-
-        //Parsing querystring parameters:
-        Object.getOwnPropertyNames(this._query).forEach((element) => {
-            this._query[element] = (req.query[element]) ? req.query[element] : "";
-            this._hasQueryParameters = Boolean(this._hasQueryParameters || req.query[element]);
-        });
-
-        //If there is an authenticated user, we parse the user data:
-        if (req.user) {
-            this._user.rawData = req.user;
-            this._user.id = req.user.sub;
-
-            if (req.user[process.env.AUTHMANAGEMENT_METADATA_KEY] && req.user[process.env.AUTHMANAGEMENT_METADATA_KEY].role) {
-                this._user.isAdmin = (req.user[process.env.AUTHMANAGEMENT_METADATA_KEY].role.toLowerCase() == "admin");
-            }
-        }
-        else {
-            this._user = null;
-        }
-    }
 }
 
 /**
@@ -366,25 +384,31 @@ class RequestContextOptions {
 
     /**
      * This are the options available for the RequestConext class.
-     * @param {boolean} disableCORSHeaders Indicates if CORS headers will be sent in the response.
-     * @param {boolean} disableEntityCheck Force not check for entity names in the URL.
-     * @param {boolean} disableMethodCheck Indicates to not check if the HTTP method is allowed.
+     * @param {Array} validEndpoints In the case the Entity check is disabled, this will hold the valid endpoints so the request can be validated against.
      * @param {boolean} doNotApplyConfiguredDelay This allows to overwrite any configured delay in .env file.
-     * @param {Array} validEndpoints In the case the Entity check is disabled, this will hold the valid 
-     * endpoints so the request can be validated against.
      */
-    constructor(disableCORSHeaders = false,
-        disableEntityCheck = false,
-        disableMethodCheck = false,
-        doNotApplyConfiguredDelay = false,
-        validEndpoints = []) {
-
-        this.disableCORSHeaders = disableCORSHeaders;
-        this.disableEntityCheck = disableEntityCheck;
-        this.disableMethodCheck = disableMethodCheck;
+    constructor(validEndpoints = [], doNotApplyConfiguredDelay = false) {
         this.doNotApplyConfiguredDelay = doNotApplyConfiguredDelay;
         this.validEndpoints = validEndpoints;
     }
 }
 
-module.exports = { RequestContext, RequestContextOptions };
+/**
+ * This class abtracts the standard API querystring parameters any api function can receive in a request.
+ */
+class RequestQuery{
+    
+    constructor() {
+        this.top = "";
+        this.skip = ""; 
+        this.sort = ""; 
+        this.pop = "";
+        this.filter = ""; 
+        this.count = "";
+        this.fields = ""; 
+        this.pub = "";
+        this.owner = "";
+    }
+}
+
+module.exports = { middleware, RequestContext, RequestContextOptions, RequestQuery };

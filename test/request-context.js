@@ -2,10 +2,12 @@
 
 var assert = require("assert");
 var Context = require("../request-context")
+var SessionCache = require("../session-cache")
+
 var req;
 var res;
 var context;
-var defaultRequestContextOptions = new Context.RequestContextOptions(true, true, true, true);
+var defaultRequestContextOptions = new Context.RequestContextOptions(["units"]);
 
 class ResponseMock {
 
@@ -45,7 +47,8 @@ function getReq(url, method, query, user) {
     url: "",
     method: "",
     query: { top: "", skip: "", sort: "", pop: "", filter: "", pub: "", owner:"" },
-    user: { rawData: null, id: "", isAdmin: false }
+    user: { sub: 1 , exp: Number(new Date())  + 50000},
+    activeSession: null
   }
 
   if (url) {
@@ -61,6 +64,7 @@ function getReq(url, method, query, user) {
   }
 
   ret.user = user; //This can be null.
+  ret.activeSession = null; //This will be set on context initialization. 
 
   return ret;
 }
@@ -71,15 +75,13 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     beforeEach((done) => {
       req = getReq("/units/", "GET");
       res = new ResponseMock();
-      context = new Context.RequestContext(req, res, defaultRequestContextOptions);
+      context = new Context.RequestContext(defaultRequestContextOptions);
+      context.setContext(req, res, () => {})
       done();
     })
 
-    it("Request is valid (this means no errors found)", () => {
-      assert.equal(context.isValidRequest, true);
-    });
-    it("Response Headers were not set", () => {
-      assert.equal(res.results.headerWasSet, false);
+    it("Response headers has been set", () => {
+      assert.equal(res.results.headerWasSet, true);
     });
     it("Response wasn't sent by the context, (this means no errors found)", () => {
       assert.equal(res.results.responseWasSent, false);
@@ -87,17 +89,14 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     it("Method is 'GET'", () => {
       assert.equal(context.method, "GET");
     });
-    it("Method is allowed", () => {
-      assert.equal(context.isMethodAllowed, true);
-    });
     it("Entity is in context", () => {
       assert.ok(context.entity);
     });
     it("Model is 'units'", () => {
       assert.equal(context.model.modelName, "Unit");
     });
-    it("modelPopulateOpts is and empty string", () => {
-      assert.equal(context.modelPopulateOpts, "");
+    it("modelPopulateOpts is not an empty string",() => {
+      assert.equal(context.modelPopulateOpts, "createdBy");
     });
     it("params is an empty array", () => {
       assert.equal(context.params.length, 0);
@@ -111,11 +110,11 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     it("getStatusCode() for Success returns 200", () => {
       assert.equal(context.getStatusCode(null), 200);
     });
-    it("getStatusCode() for Error returns 500", () => {
-      assert.equal(context.getStatusCode(new Error("Error")), 500);
+    it("getStatusCode() for Error returns 400", () => {
+      assert.equal(context.getStatusCode(new Error("Error")), 400);
     });
-    it("user is null", () => {
-      assert.equal(context.user, null);
+    it("activeSession is null", () => {
+      assert.equal(context.activeSession, null);
     });
     it("isauthenticated is false", () => {
       assert.equal(context.isAuthenticated, false);
@@ -126,15 +125,13 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     beforeEach((done) => {
       req = getReq("/units/5a1b55d8ee211d57141ec4fb", "GET");
       res = new ResponseMock();
-      context = new Context.RequestContext(req, res, defaultRequestContextOptions);
+      context = new Context.RequestContext(defaultRequestContextOptions);
+      context.setContext(req, res, () => {})
       done();
     })
 
-    it("Request is valid (this means no errors found)", () => {
-      assert.equal(context.isValidRequest, true);
-    });
-    it("Response Headers were not set", () => {
-      assert.equal(res.results.headerWasSet, false);
+    it("Response headers has been set", () => {
+      assert.equal(res.results.headerWasSet, true);
     });
     it("Response wasn't sent by the context, (this means no errors found)", () => {
       assert.equal(res.results.responseWasSent, false);
@@ -142,17 +139,14 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     it("Method is 'GET'", () => {
       assert.equal(context.method, "GET");
     });
-    it("Method is allowed", () => {
-      assert.equal(context.isMethodAllowed, true);
-    });
     it("Entity is in context", () => {
       assert.ok(context.entity);
     });
     it("Model is 'units'", () => {
       assert.equal(context.model.modelName, "Unit");
     });
-    it("modelPopulateOpts is and empty string", () => {
-      assert.equal(context.modelPopulateOpts, "");
+    it("nmodelPopulateOpts is not an empty string",() => {
+      assert.equal(context.modelPopulateOpts, "createdBy");
     });
     it("params has one single element", () => {
       assert.equal(context.params.length, 1);
@@ -169,11 +163,11 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     it("getStatusCode() for Success returns 200", () => {
       assert.equal(context.getStatusCode(null), 200);
     });
-    it("getStatusCode() for Error returns 500", () => {
-      assert.equal(context.getStatusCode(new Error("Error")), 500);
+    it("getStatusCode() for Error returns 400", () => {
+      assert.equal(context.getStatusCode(new Error("Error")), 400);
     });
-    it("user is null", () => {
-      assert.equal(context.user, null);
+    it("activeSession is null", () => {
+      assert.equal(context.activeSession, null);
     });
     it("isauthenticated is false", () => {
       assert.equal(context.isAuthenticated, false);
@@ -189,15 +183,13 @@ describe("RequestContext (disabling all Request Context Options)", () => {
           filter: "{ '$or' : [ { 'abbrev': 'UNIT07' }, { 'abbrev': 'UNIT12' } ] }"
         });
       res = new ResponseMock();
-      context = new Context.RequestContext(req, res, defaultRequestContextOptions);
+      context = new Context.RequestContext(defaultRequestContextOptions);
+      context.setContext(req, res, () => {})
       done();
     })
 
-    it("Request is valid (this means no errors found)", () => {
-      assert.equal(context.isValidRequest, true);
-    });
-    it("Response Headers were not set", () => {
-      assert.equal(res.results.headerWasSet, false);
+    it("Response headers has been set", () => {
+      assert.equal(res.results.headerWasSet, true);
     });
     it("Response wasn't sent by the context, (this means no errors found)", () => {
       assert.equal(res.results.responseWasSent, false);
@@ -205,17 +197,14 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     it("Method is 'GET'", () => {
       assert.equal(context.method, "GET");
     });
-    it("Method is allowed", () => {
-      assert.equal(context.isMethodAllowed, true);
-    });
     it("Entity is in context", () => {
       assert.ok(context.entity);
     });
     it("Model is 'units'", () => {
       assert.equal(context.model.modelName, "Unit");
     });
-    it("modelPopulateOpts is an empty string", () => {
-      assert.equal(context.modelPopulateOpts, "");
+    it("modelPopulateOpts is not an empty string", () => {
+      assert.equal(context.modelPopulateOpts, "createdBy");
     });
     it("params has no elements", () => {
       assert.equal(context.params.length, 0);
@@ -247,11 +236,11 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     it("getStatusCode() for Success returns 200", () => {
       assert.equal(context.getStatusCode(null), 200);
     });
-    it("getStatusCode() for Error returns 500", () => {
-      assert.equal(context.getStatusCode(new Error("Error")), 500);
+    it("getStatusCode() for Error returns 400", () => {
+      assert.equal(context.getStatusCode(new Error("Error")), 400);
     });
-    it("user is null", () => {
-      assert.equal(context.user, null);
+    it("activeSession is null", () => {
+      assert.equal(context.activeSession, null);
     });
     it("isauthenticated is false", () => {
       assert.equal(context.isAuthenticated, false);
@@ -264,15 +253,13 @@ describe("RequestContext (disabling all Request Context Options)", () => {
         "GET",
         { top: "10", skip: "4", sort: "-abbrev name", pop: "false", filter: `{"$text":{"$search":"\\"receta\\""}}` });
       res = new ResponseMock();
-      context = new Context.RequestContext(req, res, defaultRequestContextOptions);
+      context = new Context.RequestContext(defaultRequestContextOptions);
+      context.setContext(req, res, () => {})
       done();
     })
 
-    it("Request is valid (this means no errors found)", () => {
-      assert.equal(context.isValidRequest, true);
-    });
-    it("Response Headers were not set", () => {
-      assert.equal(res.results.headerWasSet, false);
+    it("Response headers has been set", () => {
+      assert.equal(res.results.headerWasSet, true);
     });
     it("Response wasn't sent by the context, (this means no errors found)", () => {
       assert.equal(res.results.responseWasSent, false);
@@ -280,17 +267,14 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     it("Method is 'GET'", () => {
       assert.equal(context.method, "GET");
     });
-    it("Method is allowed", () => {
-      assert.equal(context.isMethodAllowed, true);
-    });
     it("Entity is in context", () => {
       assert.ok(context.entity);
     });
     it("Model is 'units'", () => {
       assert.equal(context.model.modelName, "Unit");
     });
-    it("modelPopulateOpts is and empty string", () => {
-      assert.equal(context.modelPopulateOpts, "");
+    it("modelPopulateOpts is not an empty string",() => {
+      assert.equal(context.modelPopulateOpts, "createdBy");
     });
     it("params has no elements", () => {
       assert.equal(context.params.length, 0);
@@ -322,11 +306,11 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     it("getStatusCode() for Success returns 200", () => {
       assert.equal(context.getStatusCode(null), 200);
     });
-    it("getStatusCode() for Error returns 500", () => {
-      assert.equal(context.getStatusCode(new Error("Error")), 500);
+    it("getStatusCode() for Error returns 400", () => {
+      assert.equal(context.getStatusCode(new Error("Error")), 400);
     });
-    it("user is null", () => {
-      assert.equal(context.user, null);
+    it("activeSession is null", () => {
+      assert.equal(context.activeSession, null);
     });
     it("isauthenticated is false", () => {
       assert.equal(context.isAuthenticated, false);
@@ -337,15 +321,13 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     beforeEach((done) => {
       req = getReq("/units/", "POST")
       res = new ResponseMock();
-      context = new Context.RequestContext(req, res, defaultRequestContextOptions);
+      context = new Context.RequestContext(defaultRequestContextOptions);
+      context.setContext(req, res, () => {})
       done();
     })
 
-    it("Request is valid (this means no errors found)", () => {
-      assert.equal(context.isValidRequest, true);
-    });
-    it("Response Headers were not set", () => {
-      assert.equal(res.results.headerWasSet, false);
+    it("Response headers has been set", () => {
+      assert.equal(res.results.headerWasSet, true);
     });
     it("Response wasn't sent by the context, (this means no errors found)", () => {
       assert.equal(res.results.responseWasSent, false);
@@ -353,17 +335,14 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     it("Method is 'POST'", () => {
       assert.equal(context.method, "POST");
     });
-    it("Method is allowed", () => {
-      assert.equal(context.isMethodAllowed, true);
-    });
     it("Entity is in context", () => {
       assert.ok(context.entity);
     });
     it("Model is 'units'", () => {
       assert.equal(context.model.modelName, "Unit");
     });
-    it("modelPopulateOpts is an empty string", () => {
-      assert.equal(context.modelPopulateOpts, "");
+    it("modelPopulateOpts is not an empty string", () => {
+      assert.equal(context.modelPopulateOpts, "createdBy");
     });
     it("params is an empty array", () => {
       assert.equal(context.params.length, 0);
@@ -377,11 +356,11 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     it("getStatusCode() for Success returns 201", () => {
       assert.equal(context.getStatusCode(null), 201);
     });
-    it("getStatusCode() for Error returns 500", () => {
-      assert.equal(context.getStatusCode(new Error("Error")), 500);
+    it("getStatusCode() for Error returns 400", () => {
+      assert.equal(context.getStatusCode(new Error("Error")), 400);
     });
-    it("user is null", () => {
-      assert.equal(context.user, null);
+    it("activeSession is null", () => {
+      assert.equal(context.activeSession, null);
     });
     it("isauthenticated is false", () => {
       assert.equal(context.isAuthenticated, false);
@@ -390,21 +369,15 @@ describe("RequestContext (disabling all Request Context Options)", () => {
   describe("Context for POST /api/units With user data", () => {
 
     beforeEach((done) => {
-      req = getReq("/units/", "POST", null, {
-        rawData: {},
-        id: "1",
-        isAdmin: true
-      })
+      req = getReq("/units/", "POST", null, { sub: 1 , exp: Number(new Date())  + 50000});
       res = new ResponseMock();
-      context = new Context.RequestContext(req, res, defaultRequestContextOptions);
+      context = new Context.RequestContext(defaultRequestContextOptions);
+      context.setContext(req, res, () => {})
       done();
-    })
-
-    it("Request is valid (this means no errors found)", () => {
-      assert.equal(context.isValidRequest, true);
     });
-    it("Response Headers were not set", () => {
-      assert.equal(res.results.headerWasSet, false);
+
+    it("Response headers has been set", () => {
+      assert.equal(res.results.headerWasSet, true);
     });
     it("Response wasn't sent by the context, (this means no errors found)", () => {
       assert.equal(res.results.responseWasSent, false);
@@ -412,17 +385,14 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     it("Method is 'POST'", () => {
       assert.equal(context.method, "POST");
     });
-    it("Method is allowed", () => {
-      assert.equal(context.isMethodAllowed, true);
-    });
     it("Entity is in context", () => {
       assert.ok(context.entity);
     });
     it("Model is 'units'", () => {
       assert.equal(context.model.modelName, "Unit");
     });
-    it("modelPopulateOpts is an empty string", () => {
-      assert.equal(context.modelPopulateOpts, "");
+    it("modelPopulateOpts is not an empty string", () => {
+      assert.equal(context.modelPopulateOpts, "createdBy");
     });
     it("params is an empty array", () => {
       assert.equal(context.params.length, 0);
@@ -436,11 +406,11 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     it("getStatusCode() for Success returns 201", () => {
       assert.equal(context.getStatusCode(null), 201);
     });
-    it("getStatusCode() for Error returns 500", () => {
-      assert.equal(context.getStatusCode(new Error("Error")), 500);
+    it("getStatusCode() for Error returns 400", () => {
+      assert.equal(context.getStatusCode(new Error("Error")), 400);
     });
-    it("user is not null", () => {
-      assert.notEqual(context.user, null);
+    it("activeSession is not null", () => {
+      assert.notEqual(context.activeSession, null);
     });
     it("isauthenticated is true", () => {
       assert.equal(context.isAuthenticated, true);
@@ -451,15 +421,13 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     beforeEach((done) => {
       req = getReq("/units/", "PUT");
       res = new ResponseMock();
-      context = new Context.RequestContext(req, res, defaultRequestContextOptions);
+      context = new Context.RequestContext(defaultRequestContextOptions);
+      context.setContext(req, res, () => {})
       done();
     })
 
-    it("Request is valid (this means no errors found)", () => {
-      assert.equal(context.isValidRequest, true);
-    });
-    it("Response Headers were not set", () => {
-      assert.equal(res.results.headerWasSet, false);
+    it("Response headers has been set", () => {
+      assert.equal(res.results.headerWasSet, true);
     });
     it("Response wasn't sent by the context, (this means no errors found)", () => {
       assert.equal(res.results.responseWasSent, false);
@@ -467,17 +435,14 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     it("Method is 'PUT'", () => {
       assert.equal(context.method, "PUT");
     });
-    it("Method is allowed", () => {
-      assert.equal(context.isMethodAllowed, true);
-    });
     it("Entity is in context", () => {
       assert.ok(context.entity);
     });
     it("Model is 'units'", () => {
       assert.equal(context.model.modelName, "Unit");
     });
-    it("modelPopulateOpts is an empty string", () => {
-      assert.equal(context.modelPopulateOpts, "");
+    it("modelPopulateOpts is not an empty string", () => {
+      assert.equal(context.modelPopulateOpts, "createdBy");
     });
     it("params is an empty array", () => {
       assert.equal(context.params.length, 0);
@@ -494,8 +459,8 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     it("getStatusCode() for Error returns 422", () => {
       assert.equal(context.getStatusCode(new Error("Error")), 422);
     });
-    it("user is null", () => {
-      assert.equal(context.user, null);
+    it("activeSession is null", () => {
+      assert.equal(context.activeSession, null);
     });
     it("isauthenticated is false", () => {
       assert.equal(context.isAuthenticated, false);
@@ -506,15 +471,13 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     beforeEach((done) => {
       req = getReq("/units/5a1b55d8ee211d57141ec4fb", "PUT");
       res = new ResponseMock();
-      context = new Context.RequestContext(req, res, defaultRequestContextOptions);
+      context = new Context.RequestContext(defaultRequestContextOptions);
+      context.setContext(req, res, () => {})
       done();
     })
 
-    it("Request is valid (this means no errors found)", () => {
-      assert.equal(context.isValidRequest, true);
-    });
-    it("Response Headers were not set", () => {
-      assert.equal(res.results.headerWasSet, false);
+    it("Response headers has been set", () => {
+      assert.equal(res.results.headerWasSet, true);
     });
     it("Response wasn't sent by the context, (this means no errors found)", () => {
       assert.equal(res.results.responseWasSent, false);
@@ -522,17 +485,14 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     it("Method is 'PUT'", () => {
       assert.equal(context.method, "PUT");
     });
-    it("Method is allowed", () => {
-      assert.equal(context.isMethodAllowed, true);
-    });
     it("Entity is in context", () => {
       assert.ok(context.entity);
     });
     it("Model is 'units'", () => {
       assert.equal(context.model.modelName, "Unit");
     });
-    it("modelPopulateOpts is and empty string", () => {
-      assert.equal(context.modelPopulateOpts, "");
+    it("modelPopulateOpts is not an empty string",() => {
+      assert.equal(context.modelPopulateOpts, "createdBy");
     });
     it("params has one single element", () => {
       assert.equal(context.params.length, 1);
@@ -552,8 +512,8 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     it("getStatusCode() for Error returns 422", () => {
       assert.equal(context.getStatusCode(new Error("Error")), 422);
     });
-    it("user is null", () => {
-      assert.equal(context.user, null);
+    it("activeSession is null", () => {
+      assert.equal(context.activeSession, null);
     });
     it("isauthenticated is false", () => {
       assert.equal(context.isAuthenticated, false);
@@ -564,15 +524,13 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     beforeEach((done) => {
       req = getReq("/units/5a1b55d8ee211d57141ec4fb", "DELETE");
       res = new ResponseMock();
-      context = new Context.RequestContext(req, res, defaultRequestContextOptions);
+      context = new Context.RequestContext(defaultRequestContextOptions);
+      context.setContext(req, res, () => {});
       done();
     })
 
-    it("Request is valid (this means no errors found)", () => {
-      assert.equal(context.isValidRequest, true);
-    });
-    it("Response Headers were not set", () => {
-      assert.equal(res.results.headerWasSet, false);
+    it("Response headers has been set", () => {
+      assert.equal(res.results.headerWasSet, true);
     });
     it("Response wasn't sent by the context, (this means no errors found)", () => {
       assert.equal(res.results.responseWasSent, false);
@@ -580,17 +538,14 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     it("Method is 'DELETE'", () => {
       assert.equal(context.method, "DELETE");
     });
-    it("Method is allowed", () => {
-      assert.equal(context.isMethodAllowed, true);
-    });
     it("Entity is in context", () => {
       assert.ok(context.entity);
     });
     it("Model is 'units'", () => {
       assert.equal(context.model.modelName, "Unit");
     });
-    it("modelPopulateOpts is and empty string", () => {
-      assert.equal(context.modelPopulateOpts, "");
+    it("modelPopulateOpts is not an empty string",() => {
+      assert.equal(context.modelPopulateOpts, "createdBy");
     });
     it("params has one single element", () => {
       assert.equal(context.params.length, 1);
@@ -610,8 +565,8 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     it("getStatusCode() for Error returns 422", () => {
       assert.equal(context.getStatusCode(new Error("Error")), 422);
     });
-    it("user is null", () => {
-      assert.equal(context.user, null);
+    it("activeSession is null", () => {
+      assert.equal(context.activeSession, null);
     });
     it("isauthenticated is false", () => {
       assert.equal(context.isAuthenticated, false);
@@ -622,24 +577,19 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     beforeEach((done) => {
       req = getReq("/units/", "NOTALLOWEDMETHOD");
       res = new ResponseMock();
-      context = new Context.RequestContext(req, res, defaultRequestContextOptions);
+      context = new Context.RequestContext(defaultRequestContextOptions);
+      context.setContext(req, res, () => {})
       done();
     })
 
-    it("Request is valid (no errors found because in the options 'disableMethodCheck = true')", () => {
-      assert.equal(context.isValidRequest, true);
+    it("Response headers has been set", () => {
+      assert.equal(res.results.headerWasSet, true);
     });
-    it("Response Headers were not set", () => {
-      assert.equal(res.results.headerWasSet, false);
-    });
-    it("Response wasn't sent by the context, (this means no errors found)", () => {
-      assert.equal(res.results.responseWasSent, false);
+    it("Response was sent by the context, (this means: Error found)", () => {
+      assert.equal(res.results.statusCodeWasSent, 400);
     });
     it("Method is 'NOTALLOWEDMETHOD'", () => {
       assert.equal(context.method, "NOTALLOWEDMETHOD");
-    });
-    it("Method is NOT allowed", () => {
-      assert.equal(context.isMethodAllowed, false);
     });
     it("Entity is in context", () => {
       assert.ok(context.entity);
@@ -647,8 +597,8 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     it("Model is 'units'", () => {
       assert.equal(context.model.modelName, "Unit");
     });
-    it("modelPopulateOpts is and empty string", () => {
-      assert.equal(context.modelPopulateOpts, "");
+    it("modelPopulateOpts is not an empty string", () => {
+      assert.equal(context.modelPopulateOpts, "createdBy");
     });
     it("params has no elements", () => {
       assert.equal(context.params.length, 0);
@@ -659,14 +609,8 @@ describe("RequestContext (disabling all Request Context Options)", () => {
     it("hasQueryParameters is false", () => {
       assert.equal(context.hasQueryParameters, false);
     });
-    it("getStatusCode() for Success returns 405", () => {
-      assert.equal(context.getStatusCode(null), 405);
-    });
-    it("getStatusCode() for Error returns 405", () => {
-      assert.equal(context.getStatusCode(new Error("Error")), 405);
-    });
-    it("user is null", () => {
-      assert.equal(context.user, null);
+    it("activeSession is null", () => {
+      assert.equal(context.activeSession, null);
     });
     it("isauthenticated is false", () => {
       assert.equal(context.isAuthenticated, false);
@@ -674,103 +618,15 @@ describe("RequestContext (disabling all Request Context Options)", () => {
   });
 });
 describe("RequestContext (enabling Request Context Options)", () => {
-  describe("Enabling CORS Headers", () => {
-
-    beforeEach((done) => {
-      req = getReq("/units/", "GET");
-      res = new ResponseMock();
-      let opt = new Context.RequestContextOptions(false, true, true, true);
-      context = new Context.RequestContext(req, res, opt);
-      done();
-    })
-
-    it("Request is valid (this means no errors found)", () => {
-      assert.equal(context.isValidRequest, true);
-    });
-    it("Response Headers has been set", () => {
-      assert.equal(res.results.headerWasSet, true);
-    });
-    it("Response wasn't sent by the context, (this means no errors found)", () => {
-      assert.equal(res.results.responseWasSent, false);
-    });
-  });
-  describe("Enabling Entity check for a valid entity", () => {
-
-    beforeEach((done) => {
-      req = getReq("/units/", "GET");
-      res = new ResponseMock();
-      let opt = new Context.RequestContextOptions(true, false, true, true);
-      context = new Context.RequestContext(req, res, opt);
-      done();
-    })
-
-    it("Request is valid (this means no errors found)", () => {
-      assert.equal(context.isValidRequest, true);
-    });
-    it("Response wasn't sent by the context, (this means no errors found)", () => {
-      assert.equal(res.results.responseWasSent, false);
-    });
-  });
-  describe("Enabling Entity check for an invalid entity", () => {
-
-    beforeEach((done) => {
-      req = getReq("/invalid-entity/", "GET");
-      res = new ResponseMock();
-      let opt = new Context.RequestContextOptions(true, false, true, true);
-      context = new Context.RequestContext(req, res, opt);
-      done();
-    })
-
-    it("Request is not valid", () => {
-      assert.equal(context.isValidRequest, false);
-    });
-    it("Response was sent by the context, (error found)", () => {
-      assert.equal(JSON.parse(res.results.responseWasSent).error != null, true);
-    });
-  });
-  describe("Enabling Method check for a valid method", () => {
-
-    beforeEach((done) => {
-      req = getReq("/units/", "GET");
-      res = new ResponseMock();
-      let opt = new Context.RequestContextOptions(true, true, false, true);
-      context = new Context.RequestContext(req, res, opt);
-      done();
-    })
-
-    it("Request is valid (this means no errors found)", () => {
-      assert.equal(context.isValidRequest, true);
-    });
-    it("Response wasn't sent by the context, (this means no errors found)", () => {
-      assert.equal(res.results.responseWasSent, false);
-    });
-  });
-  describe("Enabling Method check for an invalid method", () => {
-
-    beforeEach((done) => {
-      req = getReq("/units/", "INVALID-METHOD");
-      res = new ResponseMock();
-      let opt = new Context.RequestContextOptions(true, true, false, true);
-      context = new Context.RequestContext(req, res, opt);
-      done();
-    })
-
-    it("Request is not valid", () => {
-      assert.equal(context.isValidRequest, false);
-    });
-    it("Response was sent by the context, (error found)", () => {
-      assert.equal(JSON.parse(res.results.responseWasSent).error != null, true);
-    });
-  });
   describe("Enabling configured request delay for testing purposes", () => {
 
     beforeEach((done) => {
       req = getReq("/units/", "GET");
       res = new ResponseMock();
-      let opt = new Context.RequestContextOptions(true, true, true, false);
       process.env.REQUESTS_ADDED_DELAY = "2" //We will set a custom delay of 2 sec.
-      context = new Context.RequestContext(req, res, opt);
-      
+      context = new Context.RequestContext(new Context.RequestContextOptions(defaultRequestContextOptions.validEndpoints, false));
+      context.setContext(req, res, () => {})
+
       //Sending response:
       context.sendResponse(null, { myData: "data" });
 
@@ -778,7 +634,7 @@ describe("RequestContext (enabling Request Context Options)", () => {
     })
 
     it("Response data not been sent immediately", () => {
-      assert.equal(res.results.responseWasSent, false);
+      assert.equal(res.results.responseWasSent, "");
     });
     it("next() Middleware function was called after configured delay", (done) => {
       setTimeout(() => {

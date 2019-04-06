@@ -2,7 +2,6 @@
 var express = require("express");
 var routerMedia = express.Router();
 
-var Context = require("./request-context");
 const Service = require("./media-service");
 var multer = require('multer'); //middleware used to handle multipart form data, used for file uploading.
 var multerupload = multer({ dest: process.env.LOCAL_UPLOAD_FOLDER })
@@ -12,19 +11,7 @@ routerMedia.use(function (req, res, next) {
 
     //Do anything required here like logging, etc...
 
-    let options = new Context.RequestContextOptions();
-
-    options.disableEntityCheck = true; //Media API doesn't use entities.
-    options.doNotApplyConfiguredDelay = true; //Configured delay doesn't apply to this API.
-    options.validEndpoints = [ "carousel", "upload" ];
-    
-    req["context"] = new Context.RequestContext(req, res, options);
-
-    //If the request is not valid, the RequestContext class already sent the response with the error
-    //details, so no need to call next middleware.
-    if (req["context"].isValidRequest) {
-        next();
-    }
+    next();
 });
 
 routerMedia.get("/carousel/*", (req, res) => {

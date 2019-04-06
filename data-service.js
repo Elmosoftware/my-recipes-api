@@ -25,22 +25,24 @@ class Service {
      * Set the audit inforomation in the docuent before to be persisted.
      * @param {boolean} isNewDoc Indicates if we are doing an insert or an update of a document.
      * @param {any} doc The document to be persisted. It must inherits from Entity class in order to fullfill the audit data.
-     * @param {any} user User details.
+     * @param {any} session Active session details.
      */
-    setAuditData(isNewDoc, doc, user) {
+    setAuditData(isNewDoc, doc, session) {
 
-        //Audit data for new documents:
-        if (isNewDoc) {
-            doc.createdOn = new Date();
-            doc.createdBy = user.id;
-            doc.lastUpdateOn = null;
-            doc.lastUpdateBy = null;
-            doc.deletedOn = null;
-        }
-        else { //If we are updating an existing document:
-            doc.lastUpdateOn = new Date();
-            doc.lastUpdateBy = user.id;
-            doc.deletedOn = null;
+        doc.deletedOn = null;
+
+        //If the entity have audit data:
+        if (this._entity.model.schema.obj.createdBy) { //Checking for just one of the audit fields is enough :-)
+            if (isNewDoc) {
+                doc.createdOn = new Date();
+                doc.createdBy = session.userId;
+                doc.lastUpdateOn = null;
+                doc.lastUpdateBy = null;
+            }
+            else {
+                doc.lastUpdateOn = new Date();
+                doc.lastUpdateBy = session.userId;
+            }
         }
     }
 
@@ -48,15 +50,15 @@ class Service {
      * Add an Entity document to the database.
      * 
      * @param {object} document Entity document
-     * @param {object} user RequestContext.user object.
+     * @param {object} session RequestContext.activeSession object.
      * @param {function} callback Callback function.
      */
-    add(document, user, callback) {
+    add(document, session, callback) {
         var val = new ServiceValidator();
         var promises = [];
 
         if (!val.validateCallback(callback)
-            .validateAccess(Security.ACCESS_TYPE.WRITE, this._entity, user)
+            .validateAccess(Security.ACCESS_TYPE.WRITE, this._entity, session)
             .isValid) {
             return (callback(val.getErrors(), {}));
         }
@@ -128,8 +130,10 @@ class Service {
             document._id = this.getNewobjectId();
         }
 
+        this.setAuditData(true, document, session);
+
         //We look recursively to all the subdocuments and save them:
-        promises = this.saveSubDocs(document, user, true, true)
+        promises = this.saveSubDocs(document, session, true, true)
 
         //This is to keep a reference to the model so we can persist the parent
         //document only if the subdocs where persisted successfully. 
@@ -144,8 +148,8 @@ class Service {
                     let obj = model.hydrate(document);
 
                     obj.isNew = true;
-                    this.setAuditData(true, obj, user);
-                    
+                    // this.setAuditData(true, obj, user);
+
                     obj.save((err, data) => {
 
                         //We check if the error is related to a duplicate key, (wrong data set by the user):
@@ -169,15 +173,15 @@ class Service {
      * Update an existing Entity document.
      * @param {string | object} id Object ID of the Entity document to update
      * @param {object} document Entity Document updated data.
-     * @param {object} user RequestContext.user object.
+     * @param {object} session RequestContext.activeSession object.
      * @param {function} callback Callback function.
      */
-    update(id, document, user, callback) {
+    update(id, document, session, callback) {
         var val = new ServiceValidator();
         var promises = [];
 
         if (!val.validateCallback(callback)
-            .validateAccess(Security.ACCESS_TYPE.WRITE, this._entity, user)
+            .validateAccess(Security.ACCESS_TYPE.WRITE, this._entity, session)
             .validateDocument(document, this._entity)
             .isValid) {
             return (callback(val.getErrors(), {}));
@@ -187,8 +191,10 @@ class Service {
             document._id = id;
         }
 
+        this.setAuditData(false, document, session);
+
         //Regarding subdocs, we proceed in the same way as in the add method:
-        promises = this.saveSubDocs(document, user, false, true)
+        promises = this.saveSubDocs(document, session, false, true)
         promises.push(Promise.resolve(this._entity.model));
 
         Promise.all(promises)
@@ -196,20 +202,21 @@ class Service {
                 try {
                     let model = results.pop();
 
+                    /*
+                    //DEBUG ONLY - ENABLE IF NEEDED:
                     console.log(`SUBDOCS promises results:`);
                     console.log(`${JSON.stringify(results)
                         .replace(/{/g, "")
                         .replace(/}/g, "\n")}`)
-
-                    this.setAuditData(false, document, user);
+                    */
 
                     // (node:44156) DeprecationWarning: collection.update is deprecated. Use updateOne, updateMany, or bulkWrite instead.
-                    model.update(this._parseConditions(Security.ACCESS_TYPE.WRITE, id, user), document, (err, data) => {
-                        
+                    model.update(this._parseConditions(Security.ACCESS_TYPE.WRITE, id, session), document, (err, data) => {
+
                         if (this.errorIsDupKey(err)) {
                             Codes.addUserErrorCode(err, Codes.DuplicatedItem.key)
                         }
-                        
+
                         //The attempt to update a non existent document by Id is not reported as error by Mongoose:
                         if (!err && data.n == 0) {
                             err = new Error(`The last UPDATE operation affects no documents. This can be caused by the following issues: \n
@@ -232,20 +239,20 @@ class Service {
     /**
      * Count projection.
      * @param {string} conditions JSON Filter conditions.
-     * @param {object} user RequestContext.user object.
+     * @param {object} session RequestContext.activeSession object.
      * @param {object} query RequestContext.query object.
      */
-    count(conditions, user, query) {
+    count(conditions, session, query) {
         var val = new ServiceValidator();
 
         if (!val.validateConditions(conditions, false, this._entity)
-            .validateQuery(query, user)
-            .validateAccess(Security.ACCESS_TYPE.READ, this._entity, user, query)
+            .validateQuery(query, session)
+            .validateAccess(Security.ACCESS_TYPE.READ, this._entity, session, query)
             .isValid) {
             return Promise.reject(val.getErrors());
         }
 
-        return this._entity.model.countDocuments(this._parseConditions(Security.ACCESS_TYPE.READ, conditions, user, query))
+        return this._entity.model.countDocuments(this._parseConditions(Security.ACCESS_TYPE.READ, conditions, session, query))
             .exec();
     }
 
@@ -253,21 +260,21 @@ class Service {
      * Search an Entity document by his Id or all that match the provided JSON Filter conditions.
      * @param {string} conditions JSON Filter conditions or and Entity Object ID.
      * @param {*} projection Query Projection.
-     * @param {object} user RequestContext.user object.
+     * @param {object} session RequestContext.activeSession object.
      * @param {object} query RequestContext.query object.
      */
-    find(conditions, projection, user, query) {
+    find(conditions, projection, session, query) {
         var val = new ServiceValidator();
         var cursor = null;
 
         if (!val.validateConditions(conditions, false, this._entity)
-            .validateQuery(query, user)
-            .validateAccess(Security.ACCESS_TYPE.READ, this._entity, user, query)
+            .validateQuery(query, session)
+            .validateAccess(Security.ACCESS_TYPE.READ, this._entity, session, query)
             .isValid) {
             return Promise.reject(val.getErrors());
         }
 
-        cursor = this._entity.model.find(this._parseConditions(Security.ACCESS_TYPE.READ, conditions, user, query), projection)
+        cursor = this._entity.model.find(this._parseConditions(Security.ACCESS_TYPE.READ, conditions, session, query), projection)
             .skip(Number(query.skip));
 
         if (query.fields) {
@@ -403,20 +410,20 @@ class Service {
     /**
      * Delete an Entity document from the database.
      * @param {string} id Entity Object ID
-     * @param {object} user RequestContext.user
+     * @param {object} session RequestContext.activeSession
      * @param {function} callback Callback Function.
      */
-    delete(id, user, callback) {
+    delete(id, session, callback) {
         var val = new ServiceValidator();
 
         if (!val.validateCallback(callback)
             .validateConditions(id, true, this._entity) //We will admit only an Object Id here as condition.
-            .validateAccess(Security.ACCESS_TYPE.DELETE, this._entity, user, null)
+            .validateAccess(Security.ACCESS_TYPE.DELETE, this._entity, session, null)
             .isValid) {
             return (callback(val.getErrors(), {}));
         }
 
-        this._entity.model.update(this._parseConditions(Security.ACCESS_TYPE.DELETE, id, user),
+        this._entity.model.update(this._parseConditions(Security.ACCESS_TYPE.DELETE, id, session),
             { $set: { deletedOn: new Date() } }, (err, data) => {
 
                 if (this.errorIsDupKey(err)) {
@@ -457,15 +464,18 @@ class Service {
      * The subdocument will be saved and the reference to the new object id will be replaced in the property.
      * Note: If the subdocument is embedded like in the last example, but includes the "_id" property will be automatically updated.
      * @param {any} doc Parent document which subdocs will be evaluated.
-     * @param {any} user User details
+     * @param {any} session Session data including user information
      * @param {boolean} saveAsNew Indicates if the parent doc is been inserted or updated
      * @param {boolean} isParentDocument This flag must be true only for the parent document. 
      */
-    saveSubDocs(doc, user, saveAsNew, isParentDocument = false) {
+    saveSubDocs(doc, session, saveAsNew, isParentDocument = false) {
         var val = new ServiceValidator();
         var promises = [];
 
-        console.log(`Evaluating - ${this._entity.model.modelName}`);
+        /*
+            //DEBUG ONLY - ENABLE IF NEEDED:
+            console.log(`Evaluating - ${this._entity.model.modelName}`);
+        */
 
         if (this._entity.references.length > 0) {
             this._entity.references.forEach((prop) => {
@@ -487,7 +497,7 @@ class Service {
                     for (var i = 0; i < doc[prop].length; i++) {
                         if (!val.isValidObjectId(doc[prop][i])) {
                             //Save the  subdoc:
-                            promises = promises.concat(this._saveSubDoc(doc, user, prop, i));
+                            promises = promises.concat(this._saveSubDoc(doc, session, prop, i));
                             //Replacing the reference by the subdoc Id only:
                             doc[prop][i] = doc[prop][i]._id;
                         }
@@ -501,7 +511,7 @@ class Service {
                     updates automatically).
                 */
                 else if (!val.isValidObjectId(doc[prop]) && !doc[prop]._id) {
-                    promises = promises.concat(this._saveSubDoc(doc, user, prop));
+                    promises = promises.concat(this._saveSubDoc(doc, session, prop));
                     doc[prop] = doc[prop]._id;
                 }
             });
@@ -511,16 +521,20 @@ class Service {
         if (!isParentDocument) {
 
             if (saveAsNew) {
+                /*
+                    //DEBUG ONLY - ENABLE IF NEEDED:
                 console.log(`Creating -> ${this._entity.model.modelName}#${doc._id}`)
+                */
                 var obj = this._entity.model.hydrate(doc);
 
                 obj.isNew = saveAsNew;
-                this.setAuditData(saveAsNew, obj, user);
                 promises.push(obj.save());
             }
             else {
-                this.setAuditData(saveAsNew, doc, user);
+                /*
+                    //DEBUG ONLY - ENABLE IF NEEDED:
                 console.log(`Updating -> ${this._entity.model.modelName}#${doc._id}`)
+                */
                 promises.push(this._entity.model
                     .update({ _id: doc._id }, doc)
                     .exec());
@@ -533,38 +547,40 @@ class Service {
     /**
      * Inner private function for recursivity
      * @param {any} parentDocument Parent document which childs need to be evaluated.
-     * @param {any} user User details.
+     * @param {any} session Session data including usr information.
      * @param {string} propertyName Property of the parent document to recurse.
      * @param {number} index If the propety is an array, this is the child index to process.
      */
-    _saveSubDoc(parentDocument, user, propertyName, index = null) {
+    _saveSubDoc(parentDocument, session, propertyName, index = null) {
 
         let ref = this._getReferenceType(this._entity, propertyName);
         let refEntity = Entities.getEntityByModelName(ref);
         let refService = new Service(refEntity);
-        let val = null;
+        let subDoc = null;
         let isNew = false;
 
         if (Number.isInteger(index)) {
-            val = parentDocument[propertyName][index];
+            subDoc = parentDocument[propertyName][index];
         }
         else {
-            val = parentDocument[propertyName];
+            subDoc = parentDocument[propertyName];
         }
 
-        if (!val._id) {
+        if (!subDoc._id) {
             //We assign the "_id" here because we need to persist the value in the parent document references without 
             //to wait to the async callback:
-            val._id = this.getNewobjectId();
+            subDoc._id = this.getNewobjectId();
             isNew = true;
         }
 
         //If the subdocument holds a reference to the parent document, we fill it with the parent Object id:
         if (refEntity.model.schema.obj.hasOwnProperty(this._entity.name)) {
-            val[this._entity.name] = parentDocument._id;
+            subDoc[this._entity.name] = parentDocument._id;
         }
 
-        return refService.saveSubDocs(val, user, isNew);
+        this.setAuditData(isNew, subDoc, session);
+
+        return refService.saveSubDocs(subDoc, session, isNew);
     }
 
     _getReferenceType(entity, propertyName) {
@@ -582,7 +598,7 @@ class Service {
         return ret;
     }
 
-    _parseConditions(accessType, conditions, user, query) {
+    _parseConditions(accessType, conditions, session, query) {
         var val = new ServiceValidator();
         var secSvc = new Security.SecurityService();
         let ret = {};
@@ -614,15 +630,14 @@ class Service {
 
                 //Adding conditions for "owner" query value:
                 //----------------------------------------
-                if (user && user.id) {
+                if (session && session.userId) {
                     let conditions = new Array();
 
                     if (query.owner.toLowerCase() == "me") {
-                        conditions.push(secSvc.getOnlyOwnerAccessCondition(user));
+                        conditions.push(secSvc.getOnlyOwnerAccessCondition(session));
                     }
                     else if (query.owner.toLowerCase() == "others") {
-                        conditions.push({ createdBy: { $ne: user.id } });
-                        conditions.push({ lastUpdateBy: { $ne: user.id } });
+                        conditions.push({ createdBy: { $ne: session.userId } });
                     }
 
                     if (conditions.length > 0) {
@@ -667,7 +682,7 @@ class Service {
 
         //If there is any security specific filter that has to be added based on the kind of access or the specific 
         //entity security needs, will be handled by the Security service.
-        secSvc.updateQueryFilterWithSecurityConstraints(accessType, ret, this._entity, user, query);
+        secSvc.updateQueryFilterWithSecurityConstraints(accessType, ret, this._entity, session, query);
 
         return ret;
     }
@@ -676,7 +691,7 @@ class Service {
      * Returns a boolean value indicating if the provided error is a duplicate key error on a Database operation.
      * @param {any} err Error to evaluate
      */
-    errorIsDupKey(err){
+    errorIsDupKey(err) {
         return (err && err.code && Number(err.code) == 11000) //11000 is the error code provided by Mongo related to duplicate key infractions.
     }
 
