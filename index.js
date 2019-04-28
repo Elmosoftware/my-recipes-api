@@ -78,8 +78,20 @@ app.get('/', function(req, res){
 });
 
 //Routing of Management API
+// app.use("/api/management", 
+//     authCheckMiddleware, 
+//     Context.middleware(new Context.RequestContextOptions(["login", "user", "config-status"], true)),
+//     routerManagement);
 app.use("/api/management", 
-    authCheckMiddleware, 
+    // @ts-ignore
+    authCheckMiddleware.unless((req) => {
+
+        let endpoint = Context.parseURL(decodeURI(req.url.toString())).endpoint;
+        //If the endpoint is "user" and the method is "GET" we must not require auth:
+        let ret = req.method.toLowerCase() == "get" && endpoint == "user";
+
+        return ret;
+    }), 
     Context.middleware(new Context.RequestContextOptions(["login", "user", "config-status"], true)),
     routerManagement);
 
@@ -93,7 +105,7 @@ app.use("/api/media",
 // @ts-ignore
 app.use("/api", authCheckMiddleware.unless((req) => {
 
-        //OPTIONS Method is always excluded from authenticationcheck. 
+        //OPTIONS Method is always excluded from authentication check. 
         //GET requests will be allowed always, but, if they carry the AUTHORIZATION header, we will run the middleware 
         //to process the authentication data:
         let ret = req.method.toLowerCase() == "options" || (req.method.toLowerCase() == "get" && !req.headers.authorization);

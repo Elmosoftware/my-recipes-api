@@ -408,4 +408,11 @@ v - Agregar el ttl al cache de sessionData, (tiene que removerlo de cache cuando
 v - Modificar la clase Entity tanto en APÏ como en Frontend para que CreatedBy sea una reference a User.
 v - Modificar el metodo "setauditData" del data service para que guarde en createdBy and LastUpdatedBy el userId en lugar del ProviderId
 v - Actualizar test classes!!!!
-  - Cambiar el nombre de "user" en request context por "activeSession".
+v - Cambiar el nombre de "user" en request context por "activeSession".
+
+=======================================================================
+User details page
+
+ - Crear el "unless" en index JS para que no requiera auth llamar al get del endpoint "\user"
+    Agregar "parseURL" como estática/shared" en request context.
+ - Al devolver la data del usuario recrodar eliminar data sensible.

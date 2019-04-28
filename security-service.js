@@ -77,7 +77,7 @@ class SecurityService {
      * @param {object} session RequestContext.activeSession object
      * @param {object} query RequestContext.query object.  
      */
-    updateQueryFilterWithSecurityConstraints(accessType, conditionsObject, entity, session = null, query = null){
+    updateQueryFilterWithSecurityConstraints(accessType, conditionsObject, entity, session = null, query = null) {
 
         let restrictOwnerOnly = false;
         let isNotPubAccess;
@@ -91,12 +91,12 @@ class SecurityService {
         isIdFilter = Boolean(conditionsObject && conditionsObject._id);
         //This flag indicates if we are attempting to retrieve multiple documents and some of them can be not published:
         isNotPubAccess = Boolean(query && query.pub && ["all", "notpub"].includes(String(query.pub).toLowerCase()));
-        
+
         switch (accessType) {
             case ACCESS_TYPE.READ:
-                //If we are trying to access one single documet that maybe is not published or we are trying to 
+                //If we are trying to access one single document that maybe is not published or we are trying to 
                 //fetch multiple documents that can include not published, and the security restriction for the entity indicates
-                //that "only the owner can access not published documents. We need to add the ownership condition to the filter:
+                //that only the owner can access not published documents. We need to add the ownership condition to the filter:
                 restrictOwnerOnly = (isNotPubAccess || isIdFilter) && entity.readNotPublishedPrivilege == ACCESS_PRIVILEGES.OWNER;
                 break;
             case ACCESS_TYPE.WRITE:
@@ -111,45 +111,62 @@ class SecurityService {
                 throw new Error(`There is no action defined for an ACCESS_TYPE with value "${accessType}".`)
         }
 
+        // //If we need to ensure that only the Owner can access or modify the document:
+        // if (restrictOwnerOnly) {
+        //     //If the query conditions attempt to retrieve one single document by his id:
+        //     if (isIdFilter) {
+        //         //If there is an authenticated user:
+        //         if (session && session.userId) {
+        //             //We will grant access only to owners at least the document is already published:
+        //             conditionsObject.$or = [
+        //                 { publishedOn: { $ne: null } },
+        //                 { createdBy: session.userId }]
+        //         }
+        //         else {
+        //             //If there is no authenticated user: He can only be able to access Published documents :-(
+        //             conditionsObject.publishedOn = { $ne: null }
+        //         }
+        //     }
+        //     //If the query conditions attempts to fetch multiple documents:
+        //     else {
+        //         if (!conditionsObject.$and) {
+        //             conditionsObject.$and = new Array();
+        //         }
+        //         conditionsObject.$and.push(this.getOnlyOwnerAccessCondition(session));
+        //     }
+        // }
         //If we need to ensure that only the Owner can access or modify the document:
         if (restrictOwnerOnly) {
-            //If the query conditions attempt to retrieve one single document by his id:
-            if (isIdFilter) {
-                //If there is an authenticated user:
-                if (session && session.providerId) {
-                    //We will grant access only to owners at least the document is already published:
-                    conditionsObject.$or = [
-                        { publishedOn: { $ne: null } },
-                        { createdBy: session.userId }]
+
+            //If there is an authenticated user:
+            if (session && session.userId) {
+                //We will grant access only to owners at least the document is already published:
+                if (!conditionsObject.$or) {
+                    conditionsObject.$or = new Array();
                 }
-                else {
-                    //If there is no authenticated user: He can only be able to access Published documents :-(
-                    conditionsObject.publishedOn = { $ne: null }
-                }
+                conditionsObject.$or.push({ publishedOn: { $ne: null } });
+                conditionsObject.$or.push({ createdBy: session.userId });
             }
-            //If the query conditions attempts to fetch multiple documents:
             else {
-                if (!conditionsObject.$and) {
-                    conditionsObject.$and = new Array();
-                }
-                conditionsObject.$and.push(this.getOnlyOwnerAccessCondition(session));
+                //If there is no authenticated user: He can only be able to access Published documents :-(
+                conditionsObject.publishedOn = { $ne: null };
             }
         }
     }
 
-    /**
-     * Return a filter condition required to return only documents owned by the provided user.
-     * @param {object} session RequestContext.activeSession object.
-     */
-    getOnlyOwnerAccessCondition(session){
-        this._checkUserParam(session);
-        return { createdBy: session.userId };
-    }
+    // /**
+    //  * Return a filter condition required to return only documents owned by the provided user.
+    //  * @param {object} session RequestContext.activeSession object.
+    //  */
+    // getOnlyOwnerAccessCondition(session){
+    //     this._checkUserParam(session);
+    //     return { createdBy: session.userId };
+    // }
 
     //#region Private Members
 
-    _validatePrivileges(accessPrivileges, session){
-        
+    _validatePrivileges(accessPrivileges, session) {
+
         let ret = false;
 
         this._checkAccessPrivilegesParam(accessPrivileges);
@@ -172,12 +189,12 @@ class SecurityService {
                 break;
             default:
                 throw new Error(`There is no action defined for an ACCESS_PRIVILEGES with value "${accessPrivileges}".`)
-        }           
+        }
 
         return ret;
-    }    
+    }
 
-    _checkAccessTypeParam(accessType){
+    _checkAccessTypeParam(accessType) {
 
         let ret = "";
 
@@ -188,13 +205,13 @@ class SecurityService {
             ret = `Invalid value for parameter "accessType". Provided value is "${accessType}".
                 Valid values are: ${Object.getOwnPropertyNames(ACCESS_TYPE).join(", ")}`
         }
-       
+
         if (ret) {
             throw new Error(ret);
         }
     }
 
-    _checkAccessPrivilegesParam(accessPrivileges){
+    _checkAccessPrivilegesParam(accessPrivileges) {
 
         let ret = "";
 
@@ -205,16 +222,16 @@ class SecurityService {
             ret = `Invalid value for parameter "accessPrivileges". Provided value is "${accessPrivileges}".
                 Valid values are: ${Object.getOwnPropertyNames(ACCESS_PRIVILEGES).join(", ")}`
         }
-       
+
         if (ret) {
             throw new Error(ret);
         }
     }
 
-    _checkEntityParam(entity){
+    _checkEntityParam(entity) {
 
         let ret = "";
-        
+
         if (!entity) {
             ret = `The parameter "entity" can't be null or empty. Parameter value: '${entity}'.`;
         }
@@ -230,34 +247,34 @@ class SecurityService {
         }
     }
 
-    _checkConditionsObjectParam(conditionsObject){
+    _checkConditionsObjectParam(conditionsObject) {
 
         let ret = "";
 
         if (!(conditionsObject === Object(conditionsObject))) {
             ret = `We expected an Object for parameter "conditionsObject" and we get a type of '${typeof conditionsObject}'.`;
         }
-        
+
         if (ret) {
             throw new Error(ret);
         }
     }
 
-    _checkUserParam(user){
+    // _checkUserParam(user){
 
-        let ret = "";
+    //     let ret = "";
 
-        if (!(user === Object(user))) {
-            ret = `We expected an Object for parameter "user" and we get a type of '${typeof user}'.`;
-        }
-        else if (!user.providerId) {
-            ret = `The attribute "providerId" of the provided parameter "user" seems to be missing.`;
-        }
-        
-        if (ret) {
-            throw new Error(ret);
-        }
-    }
+    //     if (!(user === Object(user))) {
+    //         ret = `We expected an Object for parameter "user" and we get a type of '${typeof user}'.`;
+    //     }
+    //     else if (!user.providerId) {
+    //         ret = `The attribute "providerId" of the provided parameter "user" seems to be missing.`;
+    //     }
+
+    //     if (ret) {
+    //         throw new Error(ret);
+    //     }
+    // }
     //#endregion
 }
 

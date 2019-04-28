@@ -15,7 +15,7 @@ const allowedHTTPMethods = {
 }
 
 /**
- * This is the middlewar function you must use to initialize the request Context.
+ * This is the middleware function you must use to initialize the request Context.
  * The context will be set as the attribute "context" of the request.
  * @param {RequestContextOptions} options Options to be set for the request context.
  */
@@ -28,13 +28,75 @@ function middleware(options) {
 }
 
 /**
+ * This returns an object with the following attributes:
+ * - *"endpoint"*: This is the URL enpoint name.
+ * e.g.: if the url is *"https://my-site/api/customers"*, then endpoint will have the value *"customers"*
+ * - *"params"*: This is a string array including all the URL parameters.
+ * e.g.: if the url is *"https://my-site/api/customers/2"*, then params will have the value *["2"]*
+ * @param {string} url URL to parse.
+ */
+function parseURL(url) {
+
+    let pos = 0;
+    let ret = {
+        endpoint: "",
+        params: []
+    }
+    /*
+        Possible URLs:
+        /model/
+        /model/ID
+        /model/?{query parameters}
+        /model/ID?{query parameters}
+
+        Sample URLs:  
+        '/recipes/?pop=false&filter={"$text":{"$search":"//"receta//""}}'
+        '/recipes/5a1b55d8ee211d57141ec4fb/?pop=false'
+    */
+
+    //Parsing the Entity name:
+    //=============================
+    url = url.slice(url.startsWith("/") ? 1 : 0);//If the URL starts with a URL separator (/), we will remove it.
+    pos = url.indexOf("/") //We search for the next separator so we can extract the entity name.
+
+    //If there is no other separator all the URL is the entity, like in "/entity".
+    if (pos == -1) {
+        ret.endpoint = url;
+        return ret;
+    }
+
+    ret.endpoint = url.slice(0, pos);
+    url = url.slice(pos + 1); //Removing all until next caracter after the separator.
+
+    //Parsing the Query:
+    //==================
+    pos = url.indexOf("?");
+
+    if (pos != -1) {
+        url = url.slice(0, pos); //If there is a query part, we ripped off.
+    }
+
+    if (url.endsWith("/")) { //if the URL still have a separator before the query symbol like in /myentity/?myquery=xxx
+        url = url.slice(0, -1) // we ripped off too.
+    }
+
+    //Parsing other params:
+    //==============================
+    if (url) {
+        ret.params = url.split("/");
+    }
+
+    return ret;
+}
+
+/**
  * This class acts as a context for each individual request providing:
  * - Request validations.
  * - Simplifies access to request, URL, parameters, (both URL & query), user data, etc.
  * - Provides methods to work with the response.  
  */
 class RequestContext {
-   
+
     /**
      * Constructor
      * @param {RequestContextOptions} options The request options.
@@ -65,7 +127,7 @@ class RequestContext {
         req.context = this;
 
         this._res = res;
-        
+
         //Setting CORS Headers:
         this._res.setHeader("Access-Control-Allow-Origin", "*");
         this._res.setHeader("Access-Control-Allow-Methods", this.getAllowedHTTPMethods().join(", "));
@@ -74,11 +136,12 @@ class RequestContext {
         this._url = decodeURI(req.url.toString());
         this._method = req.method;
 
-        parsedURL = this._parseURL(this._url);
+        // parsedURL = this.parseURL(this._url);
+        parsedURL = parseURL(this._url);
 
         if (parsedURL.endpoint) {
             this._endpoint = parsedURL.endpoint;
-            
+
             if (entities.endpointHasMappedEntity(this._endpoint)) {
                 this._entity = entities.getEntityByEndpointName(this._endpoint);
             }
@@ -119,27 +182,27 @@ class RequestContext {
                 query.fields = "details.isAdmin"
                 asyncInProgress = true;
                 svc.find(JSON.stringify({ providerId: this._activeSession.providerId }), null, this._activeSession, query)
-                .then((users) => {
+                    .then((users) => {
 
-                    /*
-                        NOTE:
-                            There is one particular use case were we can't find the user. And that is right after a new user sign up.
-                            If thats the case, the \login endpoint was not hit, so the user was not created yet.
+                        /*
+                            NOTE:
+                                There is one particular use case were we can't find the user. And that is right after a new user sign up.
+                                If thats the case, the \login endpoint was not hit, so the user was not created yet.
+    
+                                So... we do nothing. All the extra information in the user session will be fill in the login endpoint.
+                        */
+                        if (users.length > 0) {
+                            this._activeSession.userId = users[0]._id;
+                            this._activeSession.isAdmin = users[0].details.isAdmin;
+                            Cache.sessionCache.set(this._activeSession);
+                        }
 
-                            So... we do nothing. All the extra information in the user session will be fill in the login endpoint.
-                    */
-                    if (users.length > 0) {
-                        this._activeSession.userId = users[0]._id;
-                        this._activeSession.isAdmin = users[0].details.isAdmin;
-                        Cache.sessionCache.set(this._activeSession);
-                    }
-
-                    next();
-                })
-                .catch((err) => {
-                    this.sendResponse(new Error(`There was an error trying to fetch user information from the database.
+                        next();
+                    })
+                    .catch((err) => {
+                        this.sendResponse(new Error(`There was an error trying to fetch user information from the database.
                     Error details:${(err.message) ? err.message : err}`), {});
-                });
+                    });
             }
         }
         else {
@@ -322,59 +385,67 @@ class RequestContext {
         }
     }
 
-    _parseURL(url) {
+//     /**
+//      * This returns an object with the following attributes:
+//      *  - *"endpoint"*: This is the URL enpoint name.
+//      *  e.g.: if the url is *"https://my-site/api/customers"*, then endpoint will have the value *"customers"*
+//      *  - *"params"*: This is a string array including all the URL parameters.
+//      *  e.g.: if the url is *"https://my-site/api/customers/2"*, then params will have the value *["2"]*
+//      * @param {string} url URL to parse
+//      */
+//     parseURL(url) {
 
-        let pos = 0;
-        let ret = {
-            endpoint: "",
-            params: []
-        }
-        /*
-            Possible URLs:
-            /model/
-            /model/ID
-            /model/?{query parameters}
-            /model/ID?{query parameters}
+//         let pos = 0;
+//         let ret = {
+//             endpoint: "",
+//             params: []
+//         }
+//         /*
+//             Possible URLs:
+//             /model/
+//             /model/ID
+//             /model/?{query parameters}
+//             /model/ID?{query parameters}
 
-            Sample URLs:  
-            '/recipes/?pop=false&filter={"$text":{"$search":"//"receta//""}}'
-            '/recipes/5a1b55d8ee211d57141ec4fb/?pop=false'
-        */
+//             Sample URLs:  
+//             '/recipes/?pop=false&filter={"$text":{"$search":"//"receta//""}}'
+//             '/recipes/5a1b55d8ee211d57141ec4fb/?pop=false'
+//         */
 
-        //Parsing the Entity name:
-        //=============================
-        url = url.slice(url.startsWith("/") ? 1 : 0);//If the URL starts with a URL separator (/), we will remove it.
-        pos = url.indexOf("/") //We search for the next separator so we can extract the entity name.
+//         //Parsing the Entity name:
+//         //=============================
+//         url = url.slice(url.startsWith("/") ? 1 : 0);//If the URL starts with a URL separator (/), we will remove it.
+//         pos = url.indexOf("/") //We search for the next separator so we can extract the entity name.
 
-        //If there is no other separator all the URL is the entity, like in "/entity".
-        if (pos == -1) {
-            ret.endpoint = url;
-            return ret;
-        }
+//         //If there is no other separator all the URL is the entity, like in "/entity".
+//         if (pos == -1) {
+//             ret.endpoint = url;
+//             return ret;
+//         }
 
-        ret.endpoint = url.slice(0, pos);
-        url = url.slice(pos + 1); //Removing all until next caracter after the separator.
+//         ret.endpoint = url.slice(0, pos);
+//         url = url.slice(pos + 1); //Removing all until next caracter after the separator.
 
-        //Parsing the Query:
-        //==================
-        pos = url.indexOf("?");
+//         //Parsing the Query:
+//         //==================
+//         pos = url.indexOf("?");
 
-        if (pos != -1) {
-            url = url.slice(0, pos); //If there is a query part, we ripped off.
-        }
+//         if (pos != -1) {
+//             url = url.slice(0, pos); //If there is a query part, we ripped off.
+//         }
 
-        if (url.endsWith("/")) { //if the URL still have a separator before the query symbol like in /myentity/?myquery=xxx
-            url = url.slice(0, -1) // we ripped off too.
-        }
+//         if (url.endsWith("/")) { //if the URL still have a separator before the query symbol like in /myentity/?myquery=xxx
+//             url = url.slice(0, -1) // we ripped off too.
+//         }
 
-        //Parsing other params:
-        //==============================
-        if (url) {
-            ret.params = url.split("/");
-        }
+//         //Parsing other params:
+//         //==============================
+//         if (url) {
+//             ret.params = url.split("/");
+//         }
 
-        return ret;
-    }
+//         return ret;
+//     }
 }
 
 /**
@@ -396,19 +467,19 @@ class RequestContextOptions {
 /**
  * This class abtracts the standard API querystring parameters any api function can receive in a request.
  */
-class RequestQuery{
-    
+class RequestQuery {
+
     constructor() {
         this.top = "";
-        this.skip = ""; 
-        this.sort = ""; 
+        this.skip = "";
+        this.sort = "";
         this.pop = "";
-        this.filter = ""; 
+        this.filter = "";
         this.count = "";
-        this.fields = ""; 
+        this.fields = "";
         this.pub = "";
         this.owner = "";
     }
 }
 
-module.exports = { middleware, RequestContext, RequestContextOptions, RequestQuery };
+module.exports = { middleware, parseURL, RequestContext, RequestContextOptions, RequestQuery };

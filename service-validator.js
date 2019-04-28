@@ -394,6 +394,7 @@ class ServiceValidator extends ValidatorBase {
             "any" or missing argument, ("") -> Will retrieve any entity regardless of which user is the owner.
             "me" -> Will retrieve only entities owned by the authenticated user.
             "others" -> Will retrieve only entities owned by other users different than the current authenticated user.
+            {ObjectId} -> Will retrieve only the entities owned by one specific User.
         */
         let validValues = ["", "any", "me", "others"];
 
@@ -401,10 +402,10 @@ class ServiceValidator extends ValidatorBase {
             ret = `We expected a String for the "Ownership" query parameter "owner".
                         Current type: "owner" is "${typeof value}".`;
         }
-        else if (!validValues.includes(value.toLowerCase())) {
+        else if (!(validValues.includes(value.toLowerCase()) || this.isValidObjectId(value))) {           
             ret = `The query parameter "owner" has an invalid value.
             Current value is: "${value}".
-            Possible values are: ${validValues.join(", ")}.`;
+            Possible values are: ${validValues.join('", "')} or the id of one specific user.`;
         }
         else if (!session && (value.toLowerCase() == "me" || value.toLowerCase() == "others")) {
             ret = `The query option "owner" was specified with value '${value}' but there is no authenticated user for this request`;

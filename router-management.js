@@ -76,6 +76,7 @@ routerManagement.get("/login", (req, res) => {
                             details: {
                                 providerName: authServiceUserProfile.identities[0].provider,
                                 isSocial: authServiceUserProfile.identities[0].isSocial,
+                                memberSince: authServiceUserProfile.created_at,
                                 lastLogin: authServiceUserProfile.last_login,
                                 picture: authServiceUserProfile.picture,
                                 emailVerified: authServiceUserProfile.email_verified,
@@ -99,17 +100,88 @@ routerManagement.get("/login", (req, res) => {
     });
 })
 
+routerManagement.get("/user/*", (req, res) => {
 
-//TODO: Need to update this to fetch the User from our DB instead of the AUth Provider API. CHECK IF THIS IS NEEDED!!!
+    const svc = new Service(Entities.getEntityByName("user"));
+    let condition = ""; //This is the search condition. Could be an Object Id or a JSON filter.
+    // let query = new Context.RequestQuery();
+    // query.pop = "true"; 
+    // //We need to include only non-sensitive data from the user, (recall this endpoint is public):
+    // query.fields = "name";
+
+    /*
+        The first element in the "params" collections is an Object ID, (e.g: "5a319f76f45778387c6835f7"), a 
+        document unique identifier.
+        NOTE: So far, just the first parameter is processed, if there is others, those will be ignored.
+    */
+    if (req["context"].params.length > 0) {
+        condition = req["context"].params[0];
+    }
+    else if (req["context"].query.filter) { //If the condition is not an Object ID, we look at the filter querystring parameter:
+        condition = req["context"].query.filter
+    }
+
+    //Because we will be returning only not-sensitive user data, we must overwrite some of the request 
+    //query parameters, (recall this endpoint is public):
+    req["context"].query.pop = "true";
+    req["context"].query.fields = "name";
+
+    // if (req["context"].params.length > 0) {
+    svc.find(condition, null, req["context"].activeSession, req["context"].query)
+        .then((data) => {
+
+            if (data && data.length > 0) {
+                //Sadly removing the fields we need to exclude by adding them to the "query.fields" list is not working, so, 
+                //we will replace here the "details" subdoc by a new one including only the fields we want:
+                data[0].details = {
+                    _id: data[0].details._id,
+                    memberSince: data[0].details.memberSince,
+                    picture: data[0].details.picture
+                }
+            }
+
+            req["context"].sendResponse(null, data);
+        })
+        .catch((err) => {
+            req["context"].sendResponse(err, {});
+        });
+    // }
+    // else {
+    //     req["context"].sendResponse(new Error(`You need to specify the parameter "id". You cannot request information for multiple users.
+    //         Following context Details:
+    //         Req URL: "${encodeURI(req["context"].url)}"`), {}, HttpStatus.BAD_REQUEST);
+    // }
+})
 // routerManagement.get("/user/*", (req, res) => {
 
+//     const svc = new Service(Entities.getEntityByName("user"));
+//     let query = new Context.RequestQuery();
+//     query.pop = "true"; 
+//     //We need to include only non-sensitive data from the user, (recall this endpoint is public):
+//     query.fields = "name";
+
 //     if (req["context"].params.length > 0) {
-//         manage.getUser({ id: req["context"].params[0] }, (err, userProfile) => {
-//             req["context"].sendResponse(err, userProfile);
+//         svc.find(req["context"].params[0], null, req["context"].activeSession, query)
+//         .then((data) => {
+
+//             if (data && data.length > 0) {
+//                 //Sadly removing the fields we need to exclude by adding them to the "query.fields" list is not working, so, 
+//                 //we will replace here the "details" subdoc by a new one including only the fields we want:
+//                 data[0].details = {
+//                     _id: data[0].details._id,
+//                     memberSince: data[0].details.memberSince,
+//                     picture: data[0].details.picture
+//                 }
+//             }
+
+//             req["context"].sendResponse(null, data);           
+//         })
+//         .catch((err) => {
+//             req["context"].sendResponse(err, {});
 //         });
 //     }
 //     else {
-//         req["context"].sendResponse(new Error(`You need to specify the parameter "user_id". You cannot request information for multiple users.
+//         req["context"].sendResponse(new Error(`You need to specify the parameter "id". You cannot request information for multiple users.
 //             Following context Details:
 //             Req URL: "${encodeURI(req["context"].url)}"`), {}, HttpStatus.BAD_REQUEST);
 //     }

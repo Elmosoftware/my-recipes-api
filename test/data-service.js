@@ -452,7 +452,7 @@ describe("Service", () => {
 
       assert.ok(stubModelFind.called);
       assert.equal(JSON.stringify(stubModelFind.getCall(0).args[0]),
-        `{"$and":[{"mealType":{"$in":["1","2","3"]},"$or":[{"usedBy":"USER1"},{"estimatedTime":30}]},{"createdBy":"1"}],"publishedOn":{"$eq":null},"deletedOn":{"$eq":null}}`)
+        `{"$and":[{"mealType":{"$in":["1","2","3"]},"$or":[{"usedBy":"USER1"},{"estimatedTime":30}]}],"publishedOn":{"$eq":null},"deletedOn":{"$eq":null},"$or":[{"publishedOn":{"$ne":null}},{"createdBy":"1"}]}`)
     });
     it("Should complete with a JSON filter, no user logged in and 'pub'=''", () => {
 
@@ -476,7 +476,7 @@ describe("Service", () => {
       stubModelFind.restore();
 
       assert.ok(stubModelFind.called);
-      assert.equal(JSON.stringify(stubModelFind.getCall(0).args[0]), `{"_id":"5a387f92ccbd71477022ea65","publishedOn":{"$ne":null},"deletedOn":{"$eq":null}}`);
+      assert.equal(JSON.stringify(stubModelFind.getCall(0).args[0]), `{"_id":"5a387f92ccbd71477022ea65","deletedOn":{"$eq":null},"publishedOn":{"$ne":null}}`);
     });
     it("Should complete with a valid 'owner' parameter (parameter value: '')", () => {
 
@@ -506,6 +506,14 @@ describe("Service", () => {
 
       stubModelFind = setStub();
       svc.find("5a387f92ccbd71477022ea65", null, setUser("1", false), setQuery("", "", "", "", "", "", "", "", "any"));
+      stubModelFind.restore();
+
+      assert.ok(stubModelFind.called);
+    });
+    it("Should complete with a valid 'owner' parameter (parameter value: {ObjectId})", () => {
+
+      stubModelFind = setStub();
+      svc.find("5a387f92ccbd71477022ea65", null, setUser("1", false), setQuery("", "", "", "", "", "", "", "", "5a387f92ccbd71484311ac94"));
       stubModelFind.restore();
 
       assert.ok(stubModelFind.called);
@@ -561,7 +569,7 @@ describe("Service", () => {
 
       assert.ok(stubModelFind.called);
       assert.equal(JSON.stringify(stubModelFind.getCall(0).args[0]),
-        `{"mealType":{"$in":["1","2","3"]},"level":{"$ne":"4"},"$and":[{"createdBy":"1"},{"createdBy":"1"}],"deletedOn":{"$eq":null}}`)
+        `{"mealType":{"$in":["1","2","3"]},"level":{"$ne":"4"},"createdBy":"1","deletedOn":{"$eq":null},"$or":[{"publishedOn":{"$ne":null}},{"createdBy":"1"}]}`)
     });
     it("Should complete with a JSON filter with a '$and' condition in it, a user logged in, 'pub'='all' and 'owner'='me'", () => {
 
@@ -578,7 +586,7 @@ describe("Service", () => {
 
       assert.ok(stubModelFind.called);
       assert.equal(JSON.stringify(stubModelFind.getCall(0).args[0]),
-        `{"$and":[{"mealType":{"$in":["1","2","3"]},"$or":[{"__v":0},{"estimatedTime":30}]},{"createdBy":"1"},{"createdBy":"1"}],"level":{"$ne":"4"},"deletedOn":{"$eq":null}}`);
+        `{"$and":[{"mealType":{"$in":["1","2","3"]},"$or":[{"__v":0},{"estimatedTime":30}]}],"level":{"$ne":"4"},"createdBy":"1","deletedOn":{"$eq":null},"$or":[{"publishedOn":{"$ne":null}},{"createdBy":"1"}]}`);
     });
     it("Should complete with a JSON filter without a '$and' condition in it, a user logged in and 'owner'='others'", () => {
 
@@ -591,7 +599,7 @@ describe("Service", () => {
 
       assert.ok(stubModelFind.called);
       assert.equal(JSON.stringify(stubModelFind.getCall(0).args[0]),
-        `{"mealType":{"$in":["1","2","3"]},"level":{"$ne":"4"},"$and":[{"createdBy":{"$ne":"1"}},{"createdBy":"1"}],"deletedOn":{"$eq":null}}`)
+        `{"mealType":{"$in":["1","2","3"]},"level":{"$ne":"4"},"createdBy":{"$ne":"1"},"deletedOn":{"$eq":null},"$or":[{"publishedOn":{"$ne":null}},{"createdBy":"1"}]}`)
     });
     it("Should complete with a JSON filter with a '$and' condition in it, a user logged in, 'pub'='all' and 'owner'='others'", () => {
 
@@ -608,7 +616,7 @@ describe("Service", () => {
 
       assert.ok(stubModelFind.called);
       assert.equal(JSON.stringify(stubModelFind.getCall(0).args[0]),
-        `{"$and":[{"mealType":{"$in":["1","2","3"]},"$or":[{"__v":0},{"estimatedTime":30}]},{"createdBy":{"$ne":"1"}},{"createdBy":"1"}],"level":{"$ne":"4"},"deletedOn":{"$eq":null}}`)
+        `{"$and":[{"mealType":{"$in":["1","2","3"]},"$or":[{"__v":0},{"estimatedTime":30}]}],"level":{"$ne":"4"},"createdBy":{"$ne":"1"},"deletedOn":{"$eq":null},"$or":[{"publishedOn":{"$ne":null}},{"createdBy":"1"}]}`)
     });
     it("Should complete with a JSON filter without a '$and' condition in it, a user logged in, 'pub'='all' and 'owner'='any'", () => {
 
@@ -621,7 +629,7 @@ describe("Service", () => {
 
       assert.ok(stubModelFind.called);
       assert.equal(JSON.stringify(stubModelFind.getCall(0).args[0]),
-        `{"mealType":{"$in":["1","2","3"]},"level":{"$ne":"4"},"deletedOn":{"$eq":null},"$and":[{"createdBy":"1"}]}`)
+        `{"mealType":{"$in":["1","2","3"]},"level":{"$ne":"4"},"deletedOn":{"$eq":null},"$or":[{"publishedOn":{"$ne":null}},{"createdBy":"1"}]}`)
     });
     it("Should complete with a JSON filter with a '$and' condition in it, a user logged in 'pub'='all' and 'owner'='any'", () => {
 
@@ -638,7 +646,7 @@ describe("Service", () => {
 
       assert.ok(stubModelFind.called);
       assert.equal(JSON.stringify(stubModelFind.getCall(0).args[0]),
-        `{"$and":[{"mealType":{"$in":["1","2","3"]},"$or":[{"__v":0},{"estimatedTime":30}]},{"createdBy":"1"}],"level":{"$ne":"4"},"deletedOn":{"$eq":null}}`)
+        `{"$and":[{"mealType":{"$in":["1","2","3"]},"$or":[{"__v":0},{"estimatedTime":30}]}],"level":{"$ne":"4"},"deletedOn":{"$eq":null},"$or":[{"publishedOn":{"$ne":null}},{"createdBy":"1"}]}`)
     });
     it("Should complete with an Object ID as condition, no user logged in and 'owner'=''", () => {
 
@@ -647,7 +655,7 @@ describe("Service", () => {
       stubModelFind.restore();
 
       assert.ok(stubModelFind.called);
-      assert.equal(JSON.stringify(stubModelFind.getCall(0).args[0]), `{"_id":"5a387f92ccbd71477022ea65","publishedOn":{"$ne":null},"deletedOn":{"$eq":null}}`);
+      assert.equal(JSON.stringify(stubModelFind.getCall(0).args[0]), `{"_id":"5a387f92ccbd71477022ea65","deletedOn":{"$eq":null},"publishedOn":{"$ne":null}}`);
     });
     it("Shouldn't complete with a JSON filter that includes the invalid attribute 'publishedOn'", () => {
 

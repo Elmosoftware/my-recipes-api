@@ -13,6 +13,10 @@ let schema = new mongoose.Schema(helper.addCommonEntityAttributes({
      */
     providerName: { type: String, required: true },
     /**
+     * Sign up date.
+     */
+    memberSince: { type: Date, required: true },
+    /**
      * Timestamp for the last successful login the user had.
      */
     lastLogin: { type: Date, required: false },
