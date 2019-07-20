@@ -14,13 +14,22 @@ routerMedia.use(function (req, res, next) {
     next();
 });
 
-routerMedia.get("/carousel/*", (req, res) => {
+routerMedia.get("/carousel-pictures/*", (req, res) => {
 
     const svc = new Service();
 
     svc.getCarouselPictures((err, data) => {
         req["context"].sendResponse(err, data);
     });
+})
+
+routerMedia.get("/ingredients-pictures/*", (req, res) => {
+
+    const svc = new Service();
+
+    svc.getIngredientsPictures(req["context"].query, (err, data) => {
+        req["context"].sendResponse(err, data);
+    }, );
 })
 
 routerMedia.get("/upload", (req, res) => {

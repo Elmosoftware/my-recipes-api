@@ -46,6 +46,61 @@ class MediaService {
         });
     }
 
+    /**
+     * Returns a list of random ingredients pictures. 
+     * The amount of pictures to return, can be controlled by the querystring "top" attribute.
+     * If the value is greater than the total amount of available pictures, all the pictures will be retrieved. 
+     * @param {object} query RequestContext.query object. 
+     * @param {function} callback Callback function to return.
+     */
+    getIngredientsPictures(query, callback){
+        let resources = [];
+        let index = 0;
+        let top = 0;
+        let val = new ServiceValidator();
+        let options = {
+            type: 'upload',
+            prefix: process.env.CDN_INGREDIENTS_PREFIX,
+            context: true,
+            max_results: 100 //Limiting the total amount of pictures to include.
+        }
+
+        if (!val.validateCallback(callback)
+            .validateQuery(query, null)
+            .isValid) {
+            return (callback(val.getErrors(), {}));
+        }
+
+        cloudinary.api.resources(options, (err, data) => {
+
+            if (!err && data && data.resources) {
+
+                top = data.resources.length;
+                
+                if (query.top) {
+                    top = Math.min(parseInt(query.top), top);
+                }               
+                
+                index = this._randomInt(0, data.resources.length - 1); //Index of the first random image
+
+                while (top > 0) {
+                    let resource = new Media(data.resources[index].secure_url,
+                        (data.resources[index].context && data.resources[index].context.custom) ? data.resources[index].context.custom : null,
+                        data.resources[index].public_id, process.env.CDN_CLOUD_NAME, data.resources[index].width, data.resources[index].height);
+                    resources.push(resource);
+
+                    if (++index == data.resources.length) {
+                        index = 0;
+                    }
+                    top--;
+                }
+            }
+
+            callback(err, resources)
+        });
+
+    }
+
     getUploadSettings(callback) {
 
         var val = new ServiceValidator();

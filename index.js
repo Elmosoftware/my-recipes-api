@@ -78,10 +78,6 @@ app.get('/', function(req, res){
 });
 
 //Routing of Management API
-// app.use("/api/management", 
-//     authCheckMiddleware, 
-//     Context.middleware(new Context.RequestContextOptions(["login", "user", "config-status"], true)),
-//     routerManagement);
 app.use("/api/management", 
     // @ts-ignore
     authCheckMiddleware.unless((req) => {
@@ -98,7 +94,8 @@ app.use("/api/management",
 //Routing of Media API:
 app.use("/api/media", 
     authCheckMiddleware.unless({ method: 'GET' }), 
-    Context.middleware(new Context.RequestContextOptions([ "carousel", "upload" ], true)),
+    Context.middleware(new Context.RequestContextOptions([ "carousel-pictures", 
+        "ingredients-pictures",  "upload" ], true)),
     routerMedia);
 
 //Routing of Data API:
@@ -108,7 +105,8 @@ app.use("/api", authCheckMiddleware.unless((req) => {
         //OPTIONS Method is always excluded from authentication check. 
         //GET requests will be allowed always, but, if they carry the AUTHORIZATION header, we will run the middleware 
         //to process the authentication data:
-        let ret = req.method.toLowerCase() == "options" || (req.method.toLowerCase() == "get" && !req.headers.authorization);
+        let ret = req.method.toLowerCase() == "options" || 
+            (req.method.toLowerCase() == "get" && !req.headers.authorization);
 
         return ret;
     }),
