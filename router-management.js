@@ -104,11 +104,7 @@ routerManagement.get("/user/*", (req, res) => {
 
     const svc = new Service(Entities.getEntityByName("user"));
     let condition = ""; //This is the search condition. Could be an Object Id or a JSON filter.
-    // let query = new Context.RequestQuery();
-    // query.pop = "true"; 
-    // //We need to include only non-sensitive data from the user, (recall this endpoint is public):
-    // query.fields = "name";
-
+    
     /*
         The first element in the "params" collections is an Object ID, (e.g: "5a319f76f45778387c6835f7"), a 
         document unique identifier.
@@ -145,47 +141,7 @@ routerManagement.get("/user/*", (req, res) => {
         .catch((err) => {
             req["context"].sendResponse(err, {});
         });
-    // }
-    // else {
-    //     req["context"].sendResponse(new Error(`You need to specify the parameter "id". You cannot request information for multiple users.
-    //         Following context Details:
-    //         Req URL: "${encodeURI(req["context"].url)}"`), {}, HttpStatus.BAD_REQUEST);
-    // }
 })
-// routerManagement.get("/user/*", (req, res) => {
-
-//     const svc = new Service(Entities.getEntityByName("user"));
-//     let query = new Context.RequestQuery();
-//     query.pop = "true"; 
-//     //We need to include only non-sensitive data from the user, (recall this endpoint is public):
-//     query.fields = "name";
-
-//     if (req["context"].params.length > 0) {
-//         svc.find(req["context"].params[0], null, req["context"].activeSession, query)
-//         .then((data) => {
-
-//             if (data && data.length > 0) {
-//                 //Sadly removing the fields we need to exclude by adding them to the "query.fields" list is not working, so, 
-//                 //we will replace here the "details" subdoc by a new one including only the fields we want:
-//                 data[0].details = {
-//                     _id: data[0].details._id,
-//                     memberSince: data[0].details.memberSince,
-//                     picture: data[0].details.picture
-//                 }
-//             }
-
-//             req["context"].sendResponse(null, data);           
-//         })
-//         .catch((err) => {
-//             req["context"].sendResponse(err, {});
-//         });
-//     }
-//     else {
-//         req["context"].sendResponse(new Error(`You need to specify the parameter "id". You cannot request information for multiple users.
-//             Following context Details:
-//             Req URL: "${encodeURI(req["context"].url)}"`), {}, HttpStatus.BAD_REQUEST);
-//     }
-// })
 
 routerManagement.put("/user", (req, res) => {
 

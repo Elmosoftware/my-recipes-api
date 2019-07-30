@@ -6,6 +6,7 @@ const ResponseBody = require("./response-body");
 const RequestValidator = require("./request-validator")
 const Cache = require("./session-cache")
 var Service = require("./data-service");
+const LoggingProvider = require("./logging-provider");
 
 const allowedHTTPMethods = {
     GET: { errorCode: HttpStatus.BAD_REQUEST, successCode: HttpStatus.OK },
@@ -113,6 +114,7 @@ class RequestContext {
         this._options = options;
         this._res = null;
         this._responseHeadersInPayload = null;
+        this._logger = new LoggingProvider();
     }
 
     setContext(req, res, next) {
@@ -383,69 +385,11 @@ class RequestContext {
         else {
             this._res.status(statusCode).json(new ResponseBody(err, data, this._responseHeadersInPayload));
         }
+
+        if (err) {
+            this._logger.logException(err, this._activeSession);
+        }
     }
-
-//     /**
-//      * This returns an object with the following attributes:
-//      *  - *"endpoint"*: This is the URL enpoint name.
-//      *  e.g.: if the url is *"https://my-site/api/customers"*, then endpoint will have the value *"customers"*
-//      *  - *"params"*: This is a string array including all the URL parameters.
-//      *  e.g.: if the url is *"https://my-site/api/customers/2"*, then params will have the value *["2"]*
-//      * @param {string} url URL to parse
-//      */
-//     parseURL(url) {
-
-//         let pos = 0;
-//         let ret = {
-//             endpoint: "",
-//             params: []
-//         }
-//         /*
-//             Possible URLs:
-//             /model/
-//             /model/ID
-//             /model/?{query parameters}
-//             /model/ID?{query parameters}
-
-//             Sample URLs:  
-//             '/recipes/?pop=false&filter={"$text":{"$search":"//"receta//""}}'
-//             '/recipes/5a1b55d8ee211d57141ec4fb/?pop=false'
-//         */
-
-//         //Parsing the Entity name:
-//         //=============================
-//         url = url.slice(url.startsWith("/") ? 1 : 0);//If the URL starts with a URL separator (/), we will remove it.
-//         pos = url.indexOf("/") //We search for the next separator so we can extract the entity name.
-
-//         //If there is no other separator all the URL is the entity, like in "/entity".
-//         if (pos == -1) {
-//             ret.endpoint = url;
-//             return ret;
-//         }
-
-//         ret.endpoint = url.slice(0, pos);
-//         url = url.slice(pos + 1); //Removing all until next caracter after the separator.
-
-//         //Parsing the Query:
-//         //==================
-//         pos = url.indexOf("?");
-
-//         if (pos != -1) {
-//             url = url.slice(0, pos); //If there is a query part, we ripped off.
-//         }
-
-//         if (url.endsWith("/")) { //if the URL still have a separator before the query symbol like in /myentity/?myquery=xxx
-//             url = url.slice(0, -1) // we ripped off too.
-//         }
-
-//         //Parsing other params:
-//         //==============================
-//         if (url) {
-//             ret.params = url.split("/");
-//         }
-
-//         return ret;
-//     }
 }
 
 /**

@@ -1,9 +1,22 @@
 // @ts-check
 
+console.log("\n -----  MI COCINA API  -----\n");
+
 //App configuration:
 const ConfigValidator = require("./config-validator");
 const cfgVal = new ConfigValidator();
 const entities = require("./entities");
+
+//App logging:
+const LoggingProvider = require("./logging-provider");
+const logger = new LoggingProvider();
+logger.logInfo("Mi Cocina API is starting ...")
+
+//We validate the current configuration:
+if (!cfgVal.validateConfig().isValid) {
+    logger.logWarn(`\n\nIMPORTANT: The following configuration errors could prevent the application to start:\n${cfgVal.getErrors().message}
+    Please, review your ".env" file and adjust it accordingly.\n\n`);
+}
 
 //Express setup:
 const express = require("express");
@@ -29,20 +42,12 @@ const routerData = require("./router-data"); //API Data route.
 const routerManagement = require("./router-management"); //API Management route.
 const routerMedia = require("./router-media"); //API Management route.
 
-console.log("\n -----  MY RECIPES API  -----\n");
-
-//We validate the configuration is there and has valid settings:
-if (!cfgVal.validateConfig().isValid) {
-    console.error(`\n\nIMPORTANT: The following configuration errors could prevent the application to start:\n${cfgVal.getErrors().message}
-    Please, review your ".env" file and adjust it accordingly.\n\n`);
-}
-
 if (process.env.NODE_ENV != "production") {
     console.log("\nAPP Configuration (non-production site):\n");
     console.log(JSON.stringify(process.env)
-    .replace(/,/g, "\n")
-    .replace(/{/g, "")
-    .replace(/}/g, "") + "\n");
+        .replace(/,/g, "\n")
+        .replace(/{/g, "")
+        .replace(/}/g, "") + "\n");
 }
 
 //As a safe-guard, we modify specific environment related settings:
@@ -73,12 +78,12 @@ app.use(bodyParser.json()); // to support JSON-encoded bodies.
 app.use(bodyParser.urlencoded({ extended: true })); // to support URL-encoded bodies.
 
 //Routing of Welcome page:
-app.get('/', function(req, res){
+app.get('/', function (req, res) {
     res.sendFile(__dirname + "/index.html");
 });
 
 //Routing of Management API
-app.use("/api/management", 
+app.use("/api/management",
     // @ts-ignore
     authCheckMiddleware.unless((req) => {
 
@@ -87,29 +92,29 @@ app.use("/api/management",
         let ret = req.method.toLowerCase() == "get" && endpoint == "user";
 
         return ret;
-    }), 
+    }),
     Context.middleware(new Context.RequestContextOptions(["login", "user", "config-status"], true)),
     routerManagement);
 
 //Routing of Media API:
-app.use("/api/media", 
-    authCheckMiddleware.unless({ method: 'GET' }), 
-    Context.middleware(new Context.RequestContextOptions([ "carousel-pictures", 
-        "ingredients-pictures",  "upload" ], true)),
+app.use("/api/media",
+    authCheckMiddleware.unless({ method: 'GET' }),
+    Context.middleware(new Context.RequestContextOptions(["carousel-pictures",
+        "ingredients-pictures", "upload"], true)),
     routerMedia);
 
 //Routing of Data API:
 // @ts-ignore
 app.use("/api", authCheckMiddleware.unless((req) => {
 
-        //OPTIONS Method is always excluded from authentication check. 
-        //GET requests will be allowed always, but, if they carry the AUTHORIZATION header, we will run the middleware 
-        //to process the authentication data:
-        let ret = req.method.toLowerCase() == "options" || 
-            (req.method.toLowerCase() == "get" && !req.headers.authorization);
+    //OPTIONS Method is always excluded from authentication check. 
+    //GET requests will be allowed always, but, if they carry the AUTHORIZATION header, we will run the middleware 
+    //to process the authentication data:
+    let ret = req.method.toLowerCase() == "options" ||
+        (req.method.toLowerCase() == "get" && !req.headers.authorization);
 
-        return ret;
-    }),
+    return ret;
+}),
     Context.middleware(new Context.RequestContextOptions(entities.getMappedEndpointsList())),
     routerData);
 
@@ -151,4 +156,9 @@ app.listen(process.env.PORT, () => {
     console.log(`Executing on folder: ${__dirname}`);
     console.log(`Executing script: ${__filename}`);
     console.log(`\nServer is ready and listening on port:${process.env.PORT}!\n`);
+    logger.logInfo(`Mi Cocina API STARTED on "${process.env.NODE_ENV}" env. Listening on port ${process.env.PORT}.`);    
+});
+
+process.on("beforeExit", (code) =>{
+    logger.logInfo(`Mi Cocina API is stopping with code "${code}".`)
 });

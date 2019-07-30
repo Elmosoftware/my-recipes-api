@@ -111,30 +111,6 @@ class SecurityService {
                 throw new Error(`There is no action defined for an ACCESS_TYPE with value "${accessType}".`)
         }
 
-        // //If we need to ensure that only the Owner can access or modify the document:
-        // if (restrictOwnerOnly) {
-        //     //If the query conditions attempt to retrieve one single document by his id:
-        //     if (isIdFilter) {
-        //         //If there is an authenticated user:
-        //         if (session && session.userId) {
-        //             //We will grant access only to owners at least the document is already published:
-        //             conditionsObject.$or = [
-        //                 { publishedOn: { $ne: null } },
-        //                 { createdBy: session.userId }]
-        //         }
-        //         else {
-        //             //If there is no authenticated user: He can only be able to access Published documents :-(
-        //             conditionsObject.publishedOn = { $ne: null }
-        //         }
-        //     }
-        //     //If the query conditions attempts to fetch multiple documents:
-        //     else {
-        //         if (!conditionsObject.$and) {
-        //             conditionsObject.$and = new Array();
-        //         }
-        //         conditionsObject.$and.push(this.getOnlyOwnerAccessCondition(session));
-        //     }
-        // }
         //If we need to ensure that only the Owner can access or modify the document:
         if (restrictOwnerOnly) {
 
@@ -153,15 +129,6 @@ class SecurityService {
             }
         }
     }
-
-    // /**
-    //  * Return a filter condition required to return only documents owned by the provided user.
-    //  * @param {object} session RequestContext.activeSession object.
-    //  */
-    // getOnlyOwnerAccessCondition(session){
-    //     this._checkUserParam(session);
-    //     return { createdBy: session.userId };
-    // }
 
     //#region Private Members
 
@@ -260,21 +227,6 @@ class SecurityService {
         }
     }
 
-    // _checkUserParam(user){
-
-    //     let ret = "";
-
-    //     if (!(user === Object(user))) {
-    //         ret = `We expected an Object for parameter "user" and we get a type of '${typeof user}'.`;
-    //     }
-    //     else if (!user.providerId) {
-    //         ret = `The attribute "providerId" of the provided parameter "user" seems to be missing.`;
-    //     }
-
-    //     if (ret) {
-    //         throw new Error(ret);
-    //     }
-    // }
     //#endregion
 }
 

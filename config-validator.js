@@ -116,6 +116,21 @@ class ConfigValidator extends ValidatorBase {
             super._addError("CDN_USERS_PREFIX is required and can't be null or empty.");
         }
 
+        //CDN_INGREDIENTS_PREFIX is required and can't be null or empty:
+        if(!process.env.CDN_INGREDIENTS_PREFIX){
+            super._addError("CDN_INGREDIENTS_PREFIX is required and can't be null or empty.");
+        }
+
+        //LOG_DSN is required and can't be null or empty:
+        if(!process.env.LOG_DSN){
+            super._addError("LOG_DSN is required and can't be null or empty.");
+        }
+
+        //LOG_SOURCE is required and can't be null or empty:
+        if(!process.env.LOG_SOURCE){
+            super._addError("LOG_SOURCE is required and can't be null or empty.");
+        }
+        
         return this;
     }
 }
