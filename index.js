@@ -88,8 +88,9 @@ app.use("/api/management",
     authCheckMiddleware.unless((req) => {
 
         let endpoint = Context.parseURL(decodeURI(req.url.toString())).endpoint;
-        //If the endpoint is "user" and the method is "GET" we must not require auth:
-        let ret = req.method.toLowerCase() == "get" && endpoint == "user";
+        //If the endpoint is "user" or "config-status" and the method is "GET" we must not require auth:
+        let ret = req.method.toLowerCase() == "get" && 
+            (endpoint == "user" || endpoint == "config-status");
 
         return ret;
     }),
