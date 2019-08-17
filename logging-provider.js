@@ -8,7 +8,8 @@ class LoggingProvider {
 
     constructor() {
         sentry.init({
-            dsn: process.env.LOG_DSN
+            dsn: process.env.LOG_DSN,
+            environment: process.env.LOG_ENV
         });
 
         sentry.configureScope((scope) => {
