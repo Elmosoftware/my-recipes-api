@@ -476,12 +476,14 @@ describe("Service", () => {
       stubModelFind.restore();
 
       assert.ok(stubModelFind.called);
-      assert.equal(JSON.stringify(stubModelFind.getCall(0).args[0]), `{"_id":"5a387f92ccbd71477022ea65","deletedOn":{"$eq":null},"publishedOn":{"$ne":null}}`);
+      assert.equal(JSON.stringify(stubModelFind.getCall(0).args[0]), 
+        `{"_id":"5a387f92ccbd71477022ea65","publishedOn":{"$ne":null},"deletedOn":{"$eq":null}}`);
     });
     it("Should complete with a valid 'owner' parameter (parameter value: '')", () => {
 
       stubModelFind = setStub();
-      svc.find("5a387f92ccbd71477022ea65", null, setUser("1", false), setQuery("", "", "", "", "", "", "", "", ""));
+      svc.find("5a387f92ccbd71477022ea65", null, setUser("1", false), 
+        setQuery("", "", "", "", "", "", "", "", ""));
       stubModelFind.restore();
 
       assert.ok(stubModelFind.called);
@@ -655,7 +657,8 @@ describe("Service", () => {
       stubModelFind.restore();
 
       assert.ok(stubModelFind.called);
-      assert.equal(JSON.stringify(stubModelFind.getCall(0).args[0]), `{"_id":"5a387f92ccbd71477022ea65","deletedOn":{"$eq":null},"publishedOn":{"$ne":null}}`);
+      assert.equal(JSON.stringify(stubModelFind.getCall(0).args[0]), 
+        `{"_id":"5a387f92ccbd71477022ea65","publishedOn":{"$ne":null},"deletedOn":{"$eq":null}}`);
     });
     it("Shouldn't complete with a JSON filter that includes the invalid attribute 'publishedOn'", () => {
 
@@ -794,6 +797,7 @@ describe("Service", () => {
     function setStub() {
       return sinon.stub(e.model, "hydrate")
         .onFirstCall()
+        // @ts-ignore
         .returns({
           isNew: true,
           _id: "",

@@ -615,82 +615,35 @@ class Service {
                 }
                 else {
                     ret = JSON.parse(decodeURIComponent(conditions));
-
-                    //Adding conditions for "pub" query value:
-                    //----------------------------------------
-                    //Default behaviour is to include only published entities:
-                    if (query.pub == "" || query.pub.toLowerCase() == "default") {
-                        ret.publishedOn = { $ne: null };
-                    }
-                    //If was requested to include not published entities only:
-                    else if (query.pub == "notpub") {
-                        ret.publishedOn = { $eq: null };
-                    }
-
-                    //Adding conditions for "owner" query value:
-                    //----------------------------------------                
-
-                    // if (session && session.userId) {
-                    //     let conditions = new Array();
-
-                    //     if (query.owner.toLowerCase() == "me") {
-                    //         conditions.push(secSvc.getOnlyOwnerAccessCondition(session));
-                    //     }
-                    //     else if (query.owner.toLowerCase() == "others") {
-                    //         conditions.push({ createdBy: { $ne: session.userId } });
-                    //     }
-
-                    //     if (conditions.length > 0) {
-                    //         if (!ret.$and) {
-                    //             ret.$and = new Array();
-                    //         }
-
-                    //         conditions.forEach((cond) => {
-                    //             ret.$and.push(cond);
-                    //         });
-                    //     }
-                    // }
-
-                    query.owner = query.owner.toLowerCase() //To facilitate comparisons.
-
-                    //If owner has no value or is "any" there is no filter to apply.
-                    if (!(query.owner == "" || query.owner == "any")) {
-                        //The owner values "me" and others" has sense only if there is an active session:
-                        if (query.owner == "me" && session && session.userId) {
-                            //conditions.push(secSvc.getOnlyOwnerAccessCondition(session));
-                            ret.createdBy = session.userId
-                        } else if (query.owner == "others" && session && session.userId) {
-                            // conditions.push({ createdBy: { $ne: session.userId } });
-                            ret.createdBy = { $ne: session.userId }
-                        } //Last chance is that the owner parameter is a user id:
-                        else if (val.isValidObjectId(query.owner)) {
-                            //conditions.push({ createdBy: query.owner });
-                            ret.createdBy = query.owner
-                        }
-                    }
-
-
-                    /*
-                        SI NO es "" o "any"
-                            SI es "me" o "others"
-                                SI Hay session
-                                    Aplicamos filtro
-                                SINO
-                                    No hacemos nada. No tiene sentido pasar ese filtro si no hay una sesión activa.
-                                FIN SI
-                            SINO
-                                Verificamos si el parámetro es un ObjectId
-                                Si es válido, agregamos el filtro: { createdBy: query.owner };
-                            FINSI
-                        SINO
-                            Si es "" o "any" no hay filtro que aplicar. incluye a todos los usuarios.
-                        FINSI
-                    */
                 }
 
+                //Adding conditions for "pub" query value:
+                //----------------------------------------
+                //Default behaviour is to include only published entities:
+                if (query.pub == "" || query.pub.toLowerCase() == "default") {
+                    ret.publishedOn = { $ne: null };
+                }
+                //If was requested to include not published entities only:
+                else if (query.pub == "notpub") {
+                    ret.publishedOn = { $eq: null };
+                }
+
+                query.owner = query.owner.toLowerCase() //To facilitate comparisons.
+
+                //If owner has no value or is "any" there is no filter to apply.
+                if (!(query.owner == "" || query.owner == "any")) {
+                    //The owner values "me" and others" has sense only if there is an active session:
+                    if (query.owner == "me" && session && session.userId) {
+                        ret.createdBy = session.userId
+                    } else if (query.owner == "others" && session && session.userId) {
+                        ret.createdBy = { $ne: session.userId }
+                    } //Last chance is that the owner parameter is a user id:
+                    else if (val.isValidObjectId(query.owner)) {
+                        ret.createdBy = query.owner
+                    }
+                }
 
                 break;
-
             case Security.ACCESS_TYPE.WRITE:
 
                 if (val.isValidObjectId(conditions)) {

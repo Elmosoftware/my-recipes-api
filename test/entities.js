@@ -36,31 +36,5 @@ describe("Entities", () => {
       assert.equal(entities.hasEntity("unknownEntity"), false);
     });
   });
-
-  // describe("hasEntity()", () => {
-  //   it("Shouldn't throw when requesting entity 'units'", () => {
-  //     assert.ok(entities.hasEntity("units"));
-  //   });
-  //   it("Shouldn't throw when requesting entity 'ingredients'", () => {
-  //     assert.ok(entities.hasEntity("ingredients"));
-  //   });
-  //   it("Shouldn't throw when requesting entity 'levels'", () => {
-  //     assert.ok(entities.hasEntity("levels"));
-  //   });
-  //   it("Shouldn't throw when requesting entity 'mealtypes'", () => {
-  //     assert.ok(entities.hasEntity("mealtypes"));
-  //   });
-  //   it("Shouldn't throw when requesting entity 'recipes'", () => {
-  //     assert.ok(entities.hasEntity("recipes"));
-  //   });
-  //   it("Shouldn't throw when requesting entity 'recipeIngredient'", () => {
-  //     assert.ok(entities.hasEntity("recipeIngredient"));
-  //   });
-  //   it("Should throw when requesting entity 'unknownEntity'", () => {
-  //     assert.throws(() => {
-  //       entities.hasEntity("unknownEntity")
-  //       })
-  //   });
-  // });
 });
 

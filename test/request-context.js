@@ -572,50 +572,6 @@ describe("RequestContext (disabling all Request Context Options)", () => {
       assert.equal(context.isAuthenticated, false);
     });
   });
-  describe("Context for {NOT ALLOWED METHOD} /api/units/", () => {
-
-    beforeEach((done) => {
-      req = getReq("/units/", "NOTALLOWEDMETHOD");
-      res = new ResponseMock();
-      context = new Context.RequestContext(defaultRequestContextOptions);
-      context.setContext(req, res, () => {})
-      done();
-    })
-
-    it("Response headers has been set", () => {
-      assert.equal(res.results.headerWasSet, true);
-    });
-    it("Response was sent by the context, (this means: Error found)", () => {
-      assert.equal(res.results.statusCodeWasSent, 400);
-    });
-    it("Method is 'NOTALLOWEDMETHOD'", () => {
-      assert.equal(context.method, "NOTALLOWEDMETHOD");
-    });
-    it("Entity is in context", () => {
-      assert.ok(context.entity);
-    });
-    it("Model is 'units'", () => {
-      assert.equal(context.model.modelName, "Unit");
-    });
-    it("modelPopulateOpts is not an empty string", () => {
-      assert.equal(context.modelPopulateOpts, "createdBy");
-    });
-    it("params has no elements", () => {
-      assert.equal(context.params.length, 0);
-    });
-    it("url is '/units/'", () => {
-      assert.equal(context.url, "/units/");
-    });
-    it("hasQueryParameters is false", () => {
-      assert.equal(context.hasQueryParameters, false);
-    });
-    it("activeSession is null", () => {
-      assert.equal(context.activeSession, null);
-    });
-    it("isauthenticated is false", () => {
-      assert.equal(context.isAuthenticated, false);
-    });
-  });
 });
 describe("RequestContext (enabling Request Context Options)", () => {
   describe("Enabling configured request delay for testing purposes", () => {

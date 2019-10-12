@@ -80,24 +80,25 @@ class SecurityService {
     updateQueryFilterWithSecurityConstraints(accessType, conditionsObject, entity, session = null, query = null) {
 
         let restrictOwnerOnly = false;
-        let isNotPubAccess;
-        let isIdFilter;
+        // let isNotPubAccess;
+        // let isIdFilter;
 
         this._checkAccessTypeParam(accessType);
         this._checkConditionsObjectParam(conditionsObject);
         this._checkEntityParam(entity);
 
-        //This flag indicates if we are trying to query one single document by his id:
-        isIdFilter = Boolean(conditionsObject && conditionsObject._id);
-        //This flag indicates if we are attempting to retrieve multiple documents and some of them can be not published:
-        isNotPubAccess = Boolean(query && query.pub && ["all", "notpub"].includes(String(query.pub).toLowerCase()));
+        // //This flag indicates if we are trying to query one single document by his id:
+        // isIdFilter = Boolean(conditionsObject && conditionsObject._id);
+        // //This flag indicates if we are attempting to retrieve multiple documents and some of them can be not published:
+        // isNotPubAccess = Boolean(query && query.pub && ["all", "notpub"].includes(String(query.pub).toLowerCase()));
 
         switch (accessType) {
             case ACCESS_TYPE.READ:
-                //If we are trying to access one single document that maybe is not published or we are trying to 
-                //fetch multiple documents that can include not published, and the security restriction for the entity indicates
-                //that only the owner can access not published documents. We need to add the ownership condition to the filter:
-                restrictOwnerOnly = (isNotPubAccess || isIdFilter) && entity.readNotPublishedPrivilege == ACCESS_PRIVILEGES.OWNER;
+                // //If we are trying to access one single document that maybe is not published or we are trying to 
+                // //fetch multiple documents that can include not published, and the security restriction for the entity indicates
+                // //that only the owner can access not published documents. We need to add the ownership condition to the filter:
+                // restrictOwnerOnly = (isNotPubAccess || isIdFilter) && entity.readNotPublishedPrivilege == ACCESS_PRIVILEGES.OWNER;
+                restrictOwnerOnly = entity.readNotPublishedPrivilege == ACCESS_PRIVILEGES.OWNER;
                 break;
             case ACCESS_TYPE.WRITE:
                 //If we try to update an entity granted only to his Owner:
