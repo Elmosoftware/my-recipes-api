@@ -27,7 +27,11 @@ const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const mongooseOptions = {
     useNewUrlParser: true, //(node:61064) DeprecationWarning: current URL string parser is deprecated.
-    useCreateIndex: true //(node:61064) DeprecationWarning: collection.ensureIndex is deprecated. Use createIndexes instead.
+    useCreateIndex: true, //(node:61064) DeprecationWarning: collection.ensureIndex is deprecated. Use createIndexes instead.
+    //After migration to v5.7.7 we are adding the following to avoid other deprecation warnings 
+    //as stated in https://mongoosejs.com/docs/deprecations.html:
+    useFindAndModify: false,
+    useUnifiedTopology: true
 };
 
 //Auth settings:

@@ -211,7 +211,7 @@ class Service {
                     */
 
                     // (node:44156) DeprecationWarning: collection.update is deprecated. Use updateOne, updateMany, or bulkWrite instead.
-                    model.update(this._parseConditions(Security.ACCESS_TYPE.WRITE, id, session), document, (err, data) => {
+                    model.updateOne(this._parseConditions(Security.ACCESS_TYPE.WRITE, id, session), document, (err, data) => {
 
                         if (this.errorIsDupKey(err)) {
                             Codes.addUserErrorCode(err, Codes.DuplicatedItem.key)
@@ -423,7 +423,7 @@ class Service {
             return (callback(val.getErrors(), {}));
         }
 
-        this._entity.model.update(this._parseConditions(Security.ACCESS_TYPE.DELETE, id, session),
+        this._entity.model.updateOne(this._parseConditions(Security.ACCESS_TYPE.DELETE, id, session),
             { $set: { deletedOn: new Date() } }, (err, data) => {
 
                 if (this.errorIsDupKey(err)) {
@@ -536,7 +536,7 @@ class Service {
                 console.log(`Updating -> ${this._entity.model.modelName}#${doc._id}`)
                 */
                 promises.push(this._entity.model
-                    .update({ _id: doc._id }, doc)
+                    .updateOne({ _id: doc._id }, doc)
                     .exec());
             }
         }
