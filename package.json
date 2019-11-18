@@ -1,6 +1,6 @@
 {
   "name": "my-recipes-api",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "This is the REST API for My Recipes web site",
   "main": "index.js",
   "scripts": {
