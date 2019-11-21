@@ -205,6 +205,11 @@ class ServiceValidator extends ValidatorBase {
 
                 let file = files[i];
                 let fileExt = path.extname(file.originalname);
+
+                //Need to compare always lower case extensions:
+                if (fileExt) {
+                    fileExt = fileExt.toLowerCase();
+                }
         
                 if (file.size > Number(process.env.CDN_MAX_UPLOAD_SIZE)) {
                     ret = `The size of file number ${i+1}, original name: "${file.originalname}" is bigger than allowed. File size: ${file.size} bytes. Maximum upload size: ${process.env.CDN_MAX_UPLOAD_SIZE} bytes.`;
