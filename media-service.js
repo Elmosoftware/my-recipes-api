@@ -35,9 +35,16 @@ class MediaService {
 
             if (!err && data && data.resources) {
                 data.resources.forEach(resource => {
-                    let obj = new Media(this._applyImageTransformations(resource.secure_url),
+                    let url = this._getTransformationURL(resource.public_id,
+                        { 
+                            height: process.env.CDN_CAROUSEL_IMAGE_HEIGHT, 
+                            fetch_format: "auto",
+                            crop: "scale"
+                        });
+                    let obj = new Media(url,
                         (resource.context && resource.context.custom) ? resource.context.custom : null,
                         resource.public_id, process.env.CDN_CLOUD_NAME, resource.width, resource.height);
+
                     resources.push(obj);
                 });
             }
@@ -53,7 +60,7 @@ class MediaService {
      * @param {object} query RequestContext.query object. 
      * @param {function} callback Callback function to return.
      */
-    getIngredientsPictures(query, callback){
+    getIngredientsPictures(query, callback) {
         let resources = [];
         let index = 0;
         let top = 0;
@@ -76,15 +83,21 @@ class MediaService {
             if (!err && data && data.resources) {
 
                 top = data.resources.length;
-                
+
                 if (query.top) {
                     top = Math.min(parseInt(query.top), top);
-                }               
-                
+                }
+
                 index = this._randomInt(0, data.resources.length - 1); //Index of the first random image
 
                 while (top > 0) {
-                    let resource = new Media(data.resources[index].secure_url,
+
+                    let url = this._getTransformationURL(data.resources[index].public_id,
+                        { 
+                            fetch_format: "auto"
+                        });
+
+                    let resource = new Media(url,
                         (data.resources[index].context && data.resources[index].context.custom) ? data.resources[index].context.custom : null,
                         data.resources[index].public_id, process.env.CDN_CLOUD_NAME, data.resources[index].width, data.resources[index].height);
                     resources.push(resource);
@@ -131,7 +144,7 @@ class MediaService {
         var val = new ServiceValidator();
         let promises = []
         let options = { folder: process.env.CDN_USERS_PREFIX }
-        
+
         if (!val.validateCallback(callback)
             .validateMediaUploadContent(files)
             .isValid) {
@@ -144,23 +157,23 @@ class MediaService {
         });
 
         Promise.all(promises)
-        .then((results) => {
-            try {
-                let data = []
+            .then((results) => {
+                try {
+                    let data = []
 
-                results.forEach((result) => {
-                    data.push(new Media(result.secure_url, null, result.public_id, 
-                        process.env.CDN_CLOUD_NAME, result.width, result.height));
-                })
+                    results.forEach((result) => {
+                        data.push(new Media(result.secure_url, null, result.public_id,
+                            process.env.CDN_CLOUD_NAME, result.width, result.height));
+                    })
 
-                callback(null, data);
-            } catch (err) {
+                    callback(null, data);
+                } catch (err) {
+                    callback(err, {});
+                }
+            })
+            .catch((err) => {
                 callback(err, {});
-            }
-        })
-        .catch((err) => {
-            callback(err, {});
-        });
+            });
     }
 
     /**
@@ -182,22 +195,9 @@ class MediaService {
         return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
-    _applyImageTransformations(url) {
-
-        let part = "/image/upload/"
-
-        if (!url) {
-            return url;
-        }
-
-        //If we set a default carousel image height:
-        if (process.env.CDN_CAROUSEL_IMAGE_HEIGHT) {
-            url = String(url).replace(`/${process.env.CDN_CLOUD_NAME}${part}`,
-                `/${process.env.CDN_CLOUD_NAME}${part}c_scale,h_${process.env.CDN_CAROUSEL_IMAGE_HEIGHT}/`)
-        }
-
-        //Apply other configured transformations here...        
-
+    _getTransformationURL(publicId, mediaTransformationObject) {
+        let url = "";
+        url = cloudinary.url(publicId, mediaTransformationObject);
         return url;
     }
 }
