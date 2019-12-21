@@ -79,7 +79,7 @@ describe("Service", () => {
 
     it("Should complete with a valid callback as parameter", (done) => {
 
-      stubModelUpdate = sinon.stub(e.model, "update");
+      stubModelUpdate = sinon.stub(e.model, "updateOne");
       svc.update(svc.getNewobjectId(), { createdBy: userId }, user, () => { });
 
       setTimeout(() => { //Because we are testing over a promise:
@@ -90,7 +90,7 @@ describe("Service", () => {
     });
     it("Shouldn't complete with a non valid callback as parameter", () => {
 
-      stubModelUpdate = sinon.stub(e.model, "update");
+      stubModelUpdate = sinon.stub(e.model, "updateOne");
 
       assert.throws(() => {
         //@ts-ignore
@@ -102,7 +102,7 @@ describe("Service", () => {
     });
     it("Shouldn't complete when the user is not authenticated", (done) => {
 
-      stubModelUpdate = sinon.stub(e.model, "update");
+      stubModelUpdate = sinon.stub(e.model, "updateOne");
 
       svc.update(svc.getNewobjectId(), {}, null, (err, data) => {
         stubModelUpdate.restore();
@@ -113,7 +113,7 @@ describe("Service", () => {
     });
     it("Shouldn't complete when if the user is not ADMIN and attempt to update an entity other than Ingredients or Recipes.", (done) => {
 
-      stubModelUpdate = sinon.stub(e.model, "update");
+      stubModelUpdate = sinon.stub(e.model, "updateOne");
 
       svc.update(svc.getNewobjectId(), {}, setUser(1, false), (err, data) => {
         stubModelUpdate.restore();
@@ -124,7 +124,7 @@ describe("Service", () => {
     });
     it("Shouldn't complete if a hidden attribute is part of the document.", (done) => {
 
-      stubModelUpdate = sinon.stub(e.model, "update");
+      stubModelUpdate = sinon.stub(e.model, "updateOne");
 
       svc.update(svc.getNewobjectId(), { deletedOn: new Date() }, user, (err, data) => {
         stubModelUpdate.restore();
@@ -731,7 +731,7 @@ describe("Service", () => {
     let user = setUser(userId, true)
 
     function setStub() {
-      return sinon.stub(e.model, "update"); //The stub is for the "update" method since the inclusion of the "soft delete" feature.
+      return sinon.stub(e.model, "updateOne"); //The stub is for the "update" method since the inclusion of the "soft delete" feature.
     }
 
     it("Should complete with all valid parameters", () => {
