@@ -1,6 +1,9 @@
 // @ts-check
 
-console.log("\n -----  MI COCINA API  -----\n");
+// @ts-ignore
+const ver = require('./package.json').version
+
+console.log(`\n -------------------------  MI COCINA API  v${ver} ------------------------- \n`);
 
 //App configuration:
 const ConfigValidator = require("./config-validator");

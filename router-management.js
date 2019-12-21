@@ -16,6 +16,8 @@ var ConfigValidator = require("./config-validator");
 const Entities = require("./entities");
 var Service = require("./data-service");
 const Cache = require("./session-cache")
+// @ts-ignore
+const ver = require('./package.json').version
 
 //Middleware function specific to this route:
 routerManagement.use(function (req, res, next) {
@@ -38,7 +40,8 @@ routerManagement.get("/config-status", (req, res) => {
     }
 
     req["context"].sendResponse(err, {
-        ok: cfgVal.isValid
+        ok: cfgVal.isValid,
+        version: ver
     }, HttpStatus.OK);
 })
 
