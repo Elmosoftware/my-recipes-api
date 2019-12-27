@@ -35,13 +35,7 @@ class MediaService {
 
             if (!err && data && data.resources) {
                 data.resources.forEach(resource => {
-                    let url = this._getTransformationURL(resource.public_id,
-                        { 
-                            height: process.env.CDN_CAROUSEL_IMAGE_HEIGHT, 
-                            fetch_format: "auto",
-                            crop: "scale"
-                        });
-                    let obj = new Media(url,
+                    let obj = new Media(this._getResourceURL(resource.public_id),
                         (resource.context && resource.context.custom) ? resource.context.custom : null,
                         resource.public_id, process.env.CDN_CLOUD_NAME, resource.width, resource.height);
 
@@ -91,13 +85,7 @@ class MediaService {
                 index = this._randomInt(0, data.resources.length - 1); //Index of the first random image
 
                 while (top > 0) {
-
-                    let url = this._getTransformationURL(data.resources[index].public_id,
-                        { 
-                            fetch_format: "auto"
-                        });
-
-                    let resource = new Media(url,
+                    let resource = new Media(this._getResourceURL(data.resources[index].public_id),
                         (data.resources[index].context && data.resources[index].context.custom) ? data.resources[index].context.custom : null,
                         data.resources[index].public_id, process.env.CDN_CLOUD_NAME, data.resources[index].width, data.resources[index].height);
                     resources.push(resource);
@@ -195,9 +183,11 @@ class MediaService {
         return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
-    _getTransformationURL(publicId, mediaTransformationObject) {
+    _getResourceURL(publicId) {
         let url = "";
-        url = cloudinary.url(publicId, mediaTransformationObject);
+        url = cloudinary.url(publicId, {
+            fetch_format: "auto"
+        });
         return url;
     }
 }

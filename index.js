@@ -25,6 +25,7 @@ if (!cfgVal.validateConfig().isValid) {
 const express = require("express");
 const app = express();
 const bodyParser = require("body-parser");
+var compression = require('compression')
 
 //DB setup:
 const mongoose = require("mongoose");
@@ -83,6 +84,7 @@ mongoose.Promise = global.Promise; // Using native promises.
 
 app.use(bodyParser.json()); // to support JSON-encoded bodies.
 app.use(bodyParser.urlencoded({ extended: true })); // to support URL-encoded bodies.
+app.use(compression()); //Applies standard GZIP compression encoding.
 
 //Routing of Welcome page:
 app.get('/', function (req, res) {
