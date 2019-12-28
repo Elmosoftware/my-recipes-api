@@ -1,7 +1,7 @@
 {
   "name": "my-recipes-api",
-  "version": "1.0.2",
-  "description": "REST API for My Recipes web site",
+  "version": "1.0.3",
+  "description": "REST API for Mi Cocina web site",
   "main": "index.js",
   "scripts": {
     "test": "mocha",
