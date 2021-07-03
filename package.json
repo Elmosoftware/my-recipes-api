@@ -12,7 +12,7 @@
   "license": "ISC",
   "dependencies": {
     "@sentry/node": "^5.11.2",
-    "auth0": "^2.22.0",
+    "auth0": "^2.27.1",
     "body-parser": "^1.19.0",
     "cloudinary": "^1.19.0",
     "compression": "^1.7.4",
