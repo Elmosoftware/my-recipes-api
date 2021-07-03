@@ -181,7 +181,7 @@ class RequestContext {
                 //we need to create the session data:
                 this._activeSession = new Cache.SessionData(req.user.sub, Number(new Date(req.user.exp * 1000)));
 
-                query.fields = "details.isAdmin"
+                query.pop = "true"
                 asyncInProgress = true;
                 svc.find(JSON.stringify({ providerId: this._activeSession.providerId }), null, this._activeSession, query)
                     .then((users) => {
