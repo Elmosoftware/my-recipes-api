@@ -18,7 +18,7 @@
     "compression": "^1.7.4",
     "dotenv": "^6.2.0",
     "express": "^4.17.1",
-    "express-jwt": "^5.3.3",
+    "express-jwt": "^6.0.0",
     "http-status-codes": "^1.4.0",
     "jwks-rsa": "^1.12.3",
     "mocha": "^4.1.0",
